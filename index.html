@@ -3,91 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家族ポータル - デジタル庁デザインシステム準拠</title>
+    <title>カップル・ポータル</title>
     <style>
         :root {
-            --dads-color-primary: #1A4481;
-            --dads-color-background: #F8FAFC;
-            --dads-color-surface: #FFFFFF;
-            --dads-color-text: #0F172A;
-            --dads-color-text-sub: #475569;
-            --dads-color-border: #CBD5E1;
-            --dads-color-danger-bg: #FEF2F2;
-            --dads-color-danger-border: #DC2626;
-            --dads-color-danger-text: #991B1B;
+            --color-primary: #DB2777; /* 温かみのあるピンク・ローズ系 */
+            --color-primary-hover: #BE185D;
+            --color-background: #FFF1F2;
+            --color-surface: #FFFFFF;
+            --color-text: #1F2937;
+            --color-text-sub: #4B5563;
+            --color-border: #FBCFE8;
+            --color-danger-bg: #FEF2F2;
+            --color-danger-border: #DC2626;
+            --color-danger-text: #991B1B;
         }
 
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--dads-color-background);
-            color: var(--dads-color-text);
+            background-color: var(--color-background);
+            color: var(--color-text);
             margin: 0;
             padding: 0;
             line-height: 1.7;
         }
 
-        /* ログイン画面用スタイル */
         #auth-screen {
             max-width: 400px;
-            margin: 80px auto;
+            margin: 100px auto;
             padding: 32px;
-            background: var(--dads-color-surface);
-            border: 1px solid var(--dads-color-border);
-            border-radius: 8px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
             text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .login-btn {
-            background-color: var(--dads-color-primary);
+            background-color: var(--color-primary);
             color: #fff;
             border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
+            padding: 12px 20px;
+            border-radius: 6px;
             font-size: 1rem;
             cursor: pointer;
             font-weight: bold;
             margin-top: 16px;
             width: 100%;
         }
-        .login-btn:hover {
-            background-color: #112D57;
-        }
+        .login-btn:hover { background-color: var(--color-primary-hover); }
 
-        /* ポータル画面（初期非表示） */
-        #portal-screen {
-            display: none;
-        }
+        #portal-screen { display: none; }
 
         header {
-            background-color: var(--dads-color-primary);
+            background-color: var(--color-primary);
             color: #FFFFFF;
             padding: 16px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        header h1 {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-        .user-info {
-            font-size: 0.9rem;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        .logout-btn {
-            background: transparent;
-            border: 1px solid #fff;
-            color: #fff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+        header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+        .user-info { font-size: 0.9rem; display: flex; gap: 12px; align-items: center; }
+        .logout-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 
         nav {
-            background-color: var(--dads-color-surface);
-            border-bottom: 1px solid var(--dads-color-border);
+            background-color: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
             padding: 12px 24px;
             display: flex;
             gap: 16px;
@@ -96,7 +76,7 @@
         nav button {
             background: none;
             border: none;
-            color: var(--dads-color-primary);
+            color: var(--color-primary);
             font-size: 0.95rem;
             font-weight: 700;
             cursor: pointer;
@@ -105,22 +85,17 @@
             white-space: nowrap;
         }
         nav button:hover, nav button.active {
-            background-color: var(--dads-color-primary);
+            background-color: var(--color-primary);
             color: #FFFFFF;
         }
 
-        .main-container {
-            max-width: 1040px;
-            margin: 32px auto;
-            padding: 0 16px;
-        }
-
+        .main-container { max-width: 1000px; margin: 32px auto; padding: 0 16px; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
         .card {
-            background-color: var(--dads-color-surface);
-            border: 1px solid var(--dads-color-border);
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
             border-radius: 8px;
             padding: 24px;
             margin-bottom: 24px;
@@ -129,15 +104,42 @@
         .card h3 {
             margin-top: 0;
             font-size: 1.15rem;
-            border-bottom: 2px solid var(--dads-color-background);
+            border-bottom: 2px solid var(--color-background);
             padding-bottom: 12px;
-            color: var(--dads-color-primary);
+            color: var(--color-primary);
         }
+
+        /* 新規追加フォームのスタイル */
+        .add-form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+            .add-form { grid-template-columns: 1fr; }
+        }
+        .add-form input, .add-form select {
+            padding: 8px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .add-form button {
+            background-color: var(--color-primary);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .add-form button:hover { background-color: var(--color-primary-hover); }
 
         ul.task-list { list-style: none; padding: 0; margin: 0; }
         ul.task-list li {
             padding: 10px 0;
-            border-bottom: 1px solid #E2E8F0;
+            border-bottom: 1px solid #F3F4F6;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -149,24 +151,23 @@
             border-radius: 4px;
             font-weight: 700;
         }
-        .tag--girl { background-color: #FDF2F8; color: #BE185D; border: 1px solid #FBCFE8; }
-        .tag--boy { background-color: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
-        .tag--family { background-color: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+        .tag--shared { background-color: #FCE7F3; color: #9D174D; border: 1px solid #F472B6; }
+        .tag--mine { background-color: #E0F2FE; color: #0369A1; border: 1px solid #38BDF8; }
     </style>
 </head>
 <body>
 
     <!-- 1. ログイン画面 -->
     <div id="auth-screen">
-        <h2>家族ポータルへようこそ</h2>
-        <p style="font-size: 0.9rem; color: #666;">ご利用にはログインが必要です。</p>
+        <h2>ふたりのポータルへようこそ</h2>
+        <p style="font-size: 0.9rem; color: #666;">Googleアカウントでログインしてください。</p>
         <button class="login-btn" onclick="loginWithGoogle()">Googleアカウントでログイン</button>
     </div>
 
-    <!-- 2. ポータルメイン画面（ログイン後に表示） -->
+    <!-- 2. メイン画面 -->
     <div id="portal-screen">
         <header>
-            <h1>家族ポータル</h1>
+            <h1>ふたりのポータル</h1>
             <div class="user-info">
                 <span id="userEmailDisplay"></span>
                 <button class="logout-btn" onclick="logout()">ログアウト</button>
@@ -175,69 +176,72 @@
 
         <nav>
             <button class="tab-btn active" onclick="switchTab('home')">ホーム</button>
-            <button class="tab-btn" onclick="switchTab('schedule')">予定・行事</button>
-            <button class="tab-btn" onclick="switchTab('lessons')">習い事</button>
-            <button class="tab-btn" onclick="switchTab('checklist')">抜け漏れチェック</button>
-            <button class="tab-btn" onclick="switchTab('events')">イベント企画</button>
-            <button class="tab-btn" onclick="switchTab('ai')">AIアシスタント</button>
-            <button class="tab-btn" onclick="switchTab('info')">基本情報</button>
+            <button class="tab-btn" onclick="switchTab('schedule')">デート・予定</button>
+            <button class="tab-btn" onclick="switchTab('checklist')">やること・買い物</button>
+            <button class="tab-btn" onclick="switchTab('memories')">思い出・メモ</button>
         </nav>
 
         <main class="main-container">
+            <!-- ホームタブ -->
             <div id="tab-home" class="tab-content active">
-                <div class="grid-2col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                
+                <!-- 新規追加フォーム -->
+                <div class="card">
+                    <h3>予定・タスクの追加</h3>
+                    <form class="add-form" onsubmit="handleAddTask(event)">
+                        <input type="text" id="inputTitle" placeholder="予定やタスクのタイトル (例: デート、買い出し)" required>
+                        <input type="date" id="inputDate" required>
+                        <select id="inputScope">
+                            <option value="shared">ふたり共有</option>
+                            <option value="private">自分だけ</option>
+                        </select>
+                        <button type="submit">追加する</button>
+                    </form>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                     <section class="card">
-                        <h3>今日やること</h3>
+                        <h3>ふたりのやること・共有</h3>
                         <ul class="task-list" id="sharedTasksList"></ul>
                     </section>
                     <section class="card">
-                        <h3>今週の予定</h3>
+                        <h3>これからの予定</h3>
                         <ul class="task-list" id="homeEventsList"></ul>
                     </section>
                 </div>
             </div>
 
-            <div id="tab-schedule" class="tab-content"><div class="card"><h3>予定・行事</h3><ul class="task-list" id="fullScheduleList"></ul></div></div>
-            <div id="tab-lessons" class="tab-content"><div class="card"><h3>習い事</h3><ul class="task-list" id="lessonsList"></ul></div></div>
-            <div id="tab-checklist" class="tab-content"><div class="card"><h3>抜け漏れチェック</h3><ul class="task-list" id="checkList"></ul></div></div>
-            <div id="tab-events" class="tab-content"><div class="card"><h3>イベント企画</h3><ul class="task-list" id="eventsList"></ul></div></div>
-            <div id="tab-ai" class="tab-content"><div class="card"><h3>AIアシスタント</h3><p>プリント読み取り機能などをここに配置</p></div></div>
-            <div id="tab-info" class="tab-content"><div class="card"><h3>基本情報</h3><ul class="task-list" id="familyInfoList"></ul></div></div>
+            <div id="tab-schedule" class="tab-content"><div class="card"><h3>デート・予定一覧</h3><ul class="task-list" id="fullScheduleList"></ul></div></div>
+            <div id="tab-checklist" class="tab-content"><div class="card"><h3>やること・買い物リスト</h3><ul class="task-list" id="checkList"></ul></div></div>
+            <div id="tab-memories" class="tab-content"><div class="card"><h3>ふたりのメモ</h3><p>行きたいお店や記念日のメモなど</p></div></div>
         </main>
     </div>
 
-    <!-- Firebase SDK & 認証・通信スクリプト -->
+    <!-- スクリプト部 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
-          apiKey: "AIzaSyCypeHH3dX5WfVgzT0pw3uVGlgmJ-SDL8o",
-          authDomain: "portal-5e03b.firebaseapp.com",
-          projectId: "portal-5e03b",
-          storageBucket: "portal-5e03b.firebasestorage.app",
-          messagingSenderId: "494727611069",
-          appId: "1:494727611069:web:44f945bd53fa4adbcfadd4",
-          measurementId: "G-JN42QEN20P"
+            apiKey: "AIzaSyCypeHH3dX5WfVgzT0pw3uVGlgmJ-SDL8o",
+            authDomain: "portal-5e03b.firebaseapp.com",
+            projectId: "portal-5e03b",
+            storageBucket: "portal-5e03b.firebasestorage.app",
+            messagingSenderId: "494727611069",
+            appId: "1:494727611069:web:44f945bd53fa4adbcfadd4",
+            measurementId: "G-JN42QEN20P"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
-
-        // ★ デプロイしたGASのウェブアプリURLに書き換えてください
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwCdGKP2PpfFhOaPRW5sCy9xcPqLQ9JmW36Jvd1BkjS5WCgPvl6OTgX9XavuSlfXy6XIw/exec";
 
         window.loginWithGoogle = function() {
-            signInWithPopup(auth, provider).catch((error) => {
-                console.error("ログイン失敗:", error);
-            });
+            signInWithPopup(auth, provider).catch((error) => console.error("ログイン失敗:", error));
         };
 
-        window.logout = function() {
-            signOut(auth);
-        };
+        window.logout = function() { signOut(auth); };
 
         window.switchTab = function(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -246,14 +250,14 @@
             event.target.classList.add('active');
         };
 
-        // 認証状態の監視
+        let currentUserEmail = "";
+
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                currentUserEmail = user.email;
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('portal-screen').style.display = 'block';
                 document.getElementById('userEmailDisplay').textContent = user.email;
-                
-                // データを取得して描画
                 fetchPortalData();
             } else {
                 document.getElementById('auth-screen').style.display = 'block';
@@ -276,23 +280,57 @@
             const sharedList = document.getElementById('sharedTasksList');
             sharedList.innerHTML = "";
             if (data.tasks) {
-                data.tasks.filter(t => t.display_scope === 'shared').forEach(task => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<input type="checkbox" ${task.status == 1 ? 'checked' : ''} onchange="updateTask('${task.task_id}', this.checked)"> <span>${task.title}</span>`;
-                    sharedList.appendChild(li);
-                });
-            }
-
-            const homeEvents = document.getElementById('homeEventsList');
-            homeEvents.innerHTML = "";
-            if (data.events) {
-                data.events.forEach(ev => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<strong>${ev.date}</strong> - ${ev.title} <span class="tag tag--girl">${ev.target || ''}</span>`;
-                    homeEvents.appendChild(li);
+                data.tasks.forEach(task => {
+                    // 共有、もしくは自分が作成したプライベートタスクを表示
+                    if (task.display_scope === 'shared' || task.user_id === currentUserEmail) {
+                        const li = document.createElement('li');
+                        const tagClass = task.display_scope === 'shared' ? 'tag--shared' : 'tag--mine';
+                        const tagName = task.display_scope === 'shared' ? 'ふたり共有' : '自分';
+                        li.innerHTML = `
+                            <input type="checkbox" ${task.status == 1 ? 'checked' : ''} onchange="updateTask('${task.task_id}', this.checked)">
+                            <span class="tag ${tagClass}">${tagName}</span>
+                            <span>${task.title} (${task.due_date || ''})</span>
+                        `;
+                        sharedList.appendChild(li);
+                    }
                 });
             }
         }
+
+        // 画面からの新規追加処理
+        window.handleAddTask = async function(event) {
+            event.preventDefault();
+            if (GAS_API_URL.includes("YOUR_GAS")) {
+                alert("GASのURLを設定してください。");
+                return;
+            }
+
+            const title = document.getElementById('inputTitle').value;
+            const dueDate = document.getElementById('inputDate').value;
+            const scope = document.getElementById('inputScope').value;
+
+            const res = await fetch(GAS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "addTask",
+                    user_id: currentUserEmail,
+                    title: title,
+                    description: "",
+                    due_date: dueDate,
+                    display_scope: scope,
+                    category: "general"
+                })
+            });
+
+            const result = await res.json();
+            if (result.status === "success") {
+                document.getElementById('inputTitle').value = "";
+                document.getElementById('inputDate').value = "";
+                fetchPortalData(); // 再読み込み
+            } else {
+                alert("追加に失敗しました。");
+            }
+        };
 
         window.updateTask = async function(taskId, isChecked) {
             if (GAS_API_URL.includes("YOUR_GAS")) return;
