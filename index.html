@@ -19,7 +19,6 @@
             --color-border: #FBCFE8;
         }
 
-        /* 基準のフォントサイズやボックスサイズの統一（大きすぎる表示を防止） */
         html {
             font-size: 16px;
             box-sizing: border-box;
@@ -174,7 +173,6 @@
             gap: 20px;
         }
 
-        /* 520px以下の画面幅における縦並び（下配置）ルール */
         @media (max-width: 520px) {
             .add-form {
                 grid-template-columns: 1fr !important;
@@ -476,7 +474,6 @@
             document.getElementById('portal-screen').style.display = 'block';
         };
 
-        // カテゴリーの英語表記を日本語の文言に変換するヘルパー
         function getCategoryLabel(catKey) {
             switch(catKey) {
                 case 'shopping': return 'お買い物';
@@ -559,7 +556,10 @@
         window.handleSaveProfile = async function(event) {
             event.preventDefault();
             const name = document.getElementById('setupName').value;
-            const icon = document.getElementById('setupIconBase64').value || (usersMap[currentUserEmail] ? usersMap[currentUserEmail].icon : '');
+            // 新しく画像が選択されていない場合は、既存のアイコン情報（usersMap）を維持する
+            const iconInput = document.getElementById('setupIconBase64').value;
+            const currentU = usersMap[currentUserEmail] || {};
+            const icon = iconInput ? iconInput : (currentU.icon || "");
             const birthday = document.getElementById('setupBirthday').value;
 
             await fetch(GAS_API_URL, {
