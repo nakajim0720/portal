@@ -23,9 +23,9 @@
             line-height: 1.7;
         }
 
-        #auth-screen {
-            max-width: 400px;
-            margin: 100px auto;
+        #auth-screen, #error-screen, #profile-setup-screen {
+            max-width: 450px;
+            margin: 60px auto;
             padding: 32px;
             background: var(--color-surface);
             border: 1px solid var(--color-border);
@@ -33,7 +33,10 @@
             text-align: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
-        .login-btn {
+        #error-screen, #profile-setup-screen { display: none; }
+        #error-screen { color: #DC2626; border-color: #F87171; }
+        
+        .login-btn, .form-btn {
             background-color: var(--color-primary);
             color: #fff;
             border: none;
@@ -45,7 +48,7 @@
             margin-top: 16px;
             width: 100%;
         }
-        .login-btn:hover { background-color: var(--color-primary-hover); }
+        .login-btn:hover, .form-btn:hover { background-color: var(--color-primary-hover); }
 
         #portal-screen { display: none; }
 
@@ -56,9 +59,37 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
         }
         header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
         .user-info { font-size: 0.9rem; display: flex; gap: 12px; align-items: center; }
+        
+        .user-profile-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: bold;
+        }
+        .user-profile-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
         .logout-btn { background: transparent; border: 1px solid #fff; color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 
         nav {
@@ -66,7 +97,7 @@
             border-bottom: 1px solid var(--color-border);
             padding: 12px 24px;
             display: flex;
-            gap: 12px;
+            gap: 8px;
             overflow-x: auto;
         }
         nav button {
@@ -85,7 +116,7 @@
             color: #FFFFFF;
         }
 
-        .main-container { max-width: 1000px; margin: 32px auto; padding: 0 16px; }
+        .main-container { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
@@ -103,11 +134,16 @@
             border-bottom: 2px solid var(--color-background);
             padding-bottom: 12px;
             color: var(--color-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .add-form {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            grid-template-columns: 2fr 1.2fr 1fr 1fr auto;
             gap: 8px;
             margin-bottom: 20px;
         }
@@ -132,24 +168,54 @@
 
         ul.task-list { list-style: none; padding: 0; margin: 0; }
         ul.task-list li {
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #F3F4F6;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
             font-size: 0.95rem;
+            flex-wrap: wrap;
         }
-        .tag {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: 700;
+        .task-info { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
+        .task-meta { font-size: 0.75rem; color: #6B7280; display: flex; gap: 10px; align-items: center; }
+        .due-badge { background-color: #FEE2E2; color: #991B1B; padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+
+        .action-btns { display: flex; gap: 8px; }
+        .btn-sm { padding: 2px 8px; font-size: 0.8rem; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-restore { background-color: #10B981; color: #fff; }
+        .btn-delete { background-color: #EF4444; color: #fff; }
+
+        .tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 700; background-color: #FCE7F3; color: #9D174D; display: inline-flex; align-items: center; gap: 4px; }
+        .tag--private { background-color: #F3F4F6; color: #374151; }
+
+        /* カレンダー用スタイル */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+        .calendar-header { font-weight: bold; background-color: #FCE7F3; color: #9D174D; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
+        .calendar-cell { background: #FAFAFA; border: 1px solid #E5E7EB; min-height: 90px; padding: 4px; border-radius: 4px; text-align: left; font-size: 0.8rem; overflow: hidden; }
+        .calendar-cell.today { border-color: var(--color-primary); background: #FFF5F7; }
+        .cal-day-num { font-weight: bold; margin-bottom: 2px; }
+        .cal-event-item { background: #DB2777; color: #fff; padding: 2px 4px; border-radius: 2px; font-size: 0.7rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+        .cal-event-item:hover { background-color: var(--color-primary-hover); }
+        .cal-birthday-item { background: #EC4899; color: #fff; padding: 2px 4px; border-radius: 2px; font-size: 0.7rem; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        #eventModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-        .tag--shared { background-color: #FCE7F3; color: #9D174D; }
-        .tag--partner1 { background-color: #E0F2FE; color: #0369A1; }
-        .tag--partner2 { background-color: #FEF3C7; color: #D97706; }
-        .tag--mine { background-color: #F3F4F6; color: #374151; }
+        .modal-content {
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
     </style>
 </head>
 <body>
@@ -160,46 +226,73 @@
         <button class="login-btn" onclick="loginWithGoogle()">Googleアカウントでログイン</button>
     </div>
 
+    <div id="profile-setup-screen">
+        <h2 id="profileModalTitle">プロフィール設定</h2>
+        <p style="font-size: 0.9rem; color: #666;">表示名とアイコン画像、誕生日などを設定してください。</p>
+        <form onsubmit="handleSaveProfile(event)">
+            <input type="text" id="setupName" placeholder="表示名 (例: ゆうた)" required style="width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box;">
+            
+            <label style="font-size:0.8rem; display:block; text-align:left; color:#555;">アイコン画像ファイル:</label>
+            <input type="file" id="setupImageFile" accept="image/*" onchange="previewImage(event)" style="width:100%; margin-bottom:10px; box-sizing:border-box;">
+            <div id="imagePreviewContainer" style="margin-bottom:10px;">
+                <img id="imagePreview" src="" alt="プレビュー" style="width:50px; height:50px; border-radius:50%; object-fit:cover; display:none; margin:0 auto;">
+            </div>
+            <input type="hidden" id="setupIconBase64">
+
+            <label style="font-size:0.8rem; display:block; text-align:left; color:#555;">誕生日 (毎年自動でカレンダーに表示):</label>
+            <input type="date" id="setupBirthday" style="width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box;">
+
+            <input type="text" id="setupPhone" placeholder="電話番号 (任意)" style="width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box;">
+            <input type="text" id="setupAddress" placeholder="住所 (任意)" style="width:100%; padding:8px; margin-bottom:16px; box-sizing:border-box;">
+
+            <button type="submit" class="form-btn">保存する</button>
+            <button type="button" id="closeProfileBtn" onclick="closeProfileModal()" style="display:none; background:#9CA3AF; margin-top:8px;" class="form-btn">キャンセル</button>
+        </form>
+    </div>
+
+    <div id="error-screen">
+        <h3>アクセス権限がありません</h3>
+        <p>このポータルを利用する許可が登録されていません。</p>
+        <button class="login-btn" onclick="logout()">別のアカウントでログイン</button>
+    </div>
+
     <div id="portal-screen">
         <header>
-            <h1>ふたりの同棲ポータル</h1>
+            <h1>ふたりの同棲ポータル <span id="adminBadge" style="font-size:0.75rem; background:#10B981; padding:2px 6px; border-radius:4px; display:none;">管理者モード</span></h1>
             <div class="user-info">
-                <span id="userEmailDisplay"></span>
+                <button class="user-profile-btn" onclick="openProfileModal()">
+                    <span id="headerUserAvatar" class="user-avatar">👤</span>
+                    <span id="headerUserName">設定</span>
+                </button>
                 <button class="logout-btn" onclick="logout()">ログアウト</button>
             </div>
         </header>
 
         <nav>
-            <button class="tab-btn active" onclick="switchTab('home')">ホーム</button>
-            <button class="tab-btn" onclick="switchTab('housework')">1. 家事</button>
-            <button class="tab-btn" onclick="switchTab('shopping')">2. お買い物</button>
-            <button class="tab-btn" onclick="switchTab('meals')">3. 献立</button>
-            <button class="tab-btn" onclick="switchTab('finance')">4. 共通費</button>
-            <button class="tab-btn" onclick="switchTab('dateideas')">5. デート・リール</button>
-            <button class="tab-btn" onclick="switchTab('surprise')">6. サプライズBOX</button>
+            <button class="tab-btn active" onclick="switchTab('home')">🏠 ホーム</button>
+            <button class="tab-btn" onclick="switchTab('calendar')">📅 月間カレンダー</button>
+            <button class="tab-btn" onclick="switchTab('shopping')">🛒 お買い物</button>
+            <button class="tab-btn" onclick="switchTab('dateideas')">🎉 デート</button>
+            <button class="tab-btn" onclick="switchTab('shared')">🤝 共有</button>
+            <button class="tab-btn" onclick="switchTab('completed')">✅ 実行済み</button>
+            <button class="tab-btn" onclick="switchTab('trash')">🗑️ 削除</button>
         </nav>
 
         <main class="main-container">
-            <!-- ホームタブ -->
             <div id="tab-home" class="tab-content active">
                 <div class="card">
                     <h3>新規アイテムの追加</h3>
                     <form class="add-form" onsubmit="handleAddTask(event)">
-                        <input type="text" id="inputTitle" placeholder="内容 (例: ゴミ出し、カフェのURL、記念日デート)" required>
-                        <input type="date" id="inputDate">
+                        <input type="text" id="inputTitle" placeholder="内容 (例: ゴミ出し、カフェのURL)" required>
+                        <input type="datetime-local" id="inputDate">
                         <select id="inputCategory">
-                            <option value="housework">1. 家事・ローテーション</option>
-                            <option value="shopping">2. お買い物リスト</option>
-                            <option value="meal">3. 献立・夜ご飯</option>
-                            <option value="finance">4. 共通費メモ</option>
-                            <option value="dateideas">5. デート・イベント・リール</option>
-                            <option value="surprise">6. サプライズ・お願い</option>
+                            <option value="shopping">お買い物</option>
+                            <option value="dateideas">デート</option>
+                            <option value="shared">共有・家事など</option>
                         </select>
                         <select id="inputAssignee">
                             <option value="ふたり共有">🤝 ふたり共有</option>
-                            <option value="彼氏">👦 ゆうた（彼氏）</option>
-                            <option value="彼女">👧 あかり（彼女）</option>
-                            <option value="自分だけ">🔒 自分だけ</option>
+                            <option value="private">🔒 自分だけ</option>
                         </select>
                         <button type="submit">追加</button>
                     </form>
@@ -207,24 +300,54 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                     <section class="card">
-                        <h3>本日のやること・家事</h3>
+                        <h3>本日の未完了タスク</h3>
                         <ul class="task-list" id="homeTasksList"></ul>
                     </section>
                     <section class="card">
-                        <h3>今度のデート・イベント予定</h3>
+                        <h3>今度のデート・予定</h3>
                         <ul class="task-list" id="homeEventsList"></ul>
                     </section>
                 </div>
             </div>
 
-            <!-- 各機能タブ -->
-            <div id="tab-housework" class="tab-content"><div class="card"><h3>1. 家事のローテーション＆公平性チェッカー</h3><ul class="task-list" id="listHousework"></ul></div></div>
-            <div id="tab-shopping" class="tab-content"><div class="card"><h3>2. お買い物・消耗品共有リスト</h3><ul class="task-list" id="listShopping"></ul></div></div>
-            <div id="tab-meals" class="tab-content"><div class="card"><h3>3. 食事の献立・「今日の夜何食べる？」相談ボード</h3><ul class="task-list" id="listMeals"></ul></div></div>
-            <div id="tab-finance" class="tab-content"><div class="card"><h3>4. 2人の支出・共通費のメモ</h3><ul class="task-list" id="listFinance"></ul></div></div>
-            <div id="tab-dateideas" class="tab-content"><div class="card"><h3>5. デート・行きたい場所・イベント・リール動画まとめ</h3><ul class="task-list" id="listDateideas"></ul></div></div>
-            <div id="tab-surprise" class="tab-content"><div class="card"><h3>6. プライベートな「お願い・サプライズ」BOX</h3><ul class="task-list" id="listSurprise"></ul></div></div>
+            <div id="tab-calendar" class="tab-content">
+                <div class="card">
+                    <h3 id="calMonthTitle">
+                        月間カレンダー
+                        <div class="toolbar" style="display:flex; gap:8px;">
+                            <button class="btn-sm" onclick="changeMonth(-1)">◀ 前月</button>
+                            <button class="btn-sm" onclick="changeMonth(1)">翌月 ▶</button>
+                        </div>
+                    </h3>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+            </div>
+
+            <div id="tab-shopping" class="tab-content"><div class="card"><h3>🛒 お買い物リスト</h3><ul class="task-list" id="listShopping"></ul></div></div>
+            <div id="tab-dateideas" class="tab-content"><div class="card"><h3>🎉 デート・イベント・リール</h3><ul class="task-list" id="listDateideas"></ul></div></div>
+            <div id="tab-shared" class="tab-content"><div class="card"><h3>🤝 共有タスク・家事</h3><ul class="task-list" id="listShared"></ul></div></div>
+            <div id="tab-completed" class="tab-content"><div class="card"><h3>✅ 実行済み（完了）一覧</h3><ul class="task-list" id="listCompleted"></ul></div></div>
+            <div id="tab-trash" class="tab-content">
+                <div class="card">
+                    <h3>🗑️ 削除（ゴミ箱）</h3>
+                    <p style="font-size:0.85rem; color:#666;">ゴミ箱内のアイテムは、7日経過すると自動で完全に削除されます。</p>
+                    <ul class="task-list" id="listTrash"></ul>
+                </div>
+            </div>
         </main>
+    </div>
+
+    <div id="eventModal">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="color:var(--color-primary); border-bottom:2px solid var(--color-background); padding-bottom:8px; margin-top:0;">詳細</h3>
+            <p><strong>📅 期日:</strong> <span id="modalDate"></span></p>
+            <p><strong>🏷️ カテゴリー:</strong> <span id="modalCategory"></span></p>
+            <p><strong>👤 担当者:</strong> <span id="modalAssignee"></span></p>
+            <p><strong>✍️ 追加者:</strong> <span id="modalCreator"></span></p>
+            <div style="text-align: right; margin-top: 16px;">
+                <button onclick="closeEventModal()" class="btn-sm" style="background:#DB2777; color:#fff; padding:6px 16px;">閉じる</button>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -246,6 +369,11 @@
         const provider = new GoogleAuthProvider();
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwCdGKP2PpfFhOaPRW5sCy9xcPqLQ9JmW36Jvd1BkjS5WCgPvl6OTgX9XavuSlfXy6XIw/exec";
 
+        let currentUserEmail = "";
+        let usersMap = {}; 
+        let globalTasksData = [];
+        let currentCalendarDate = new Date();
+
         window.loginWithGoogle = function() { signInWithPopup(auth, provider); };
         window.logout = function() { signOut(auth); };
         window.switchTab = function(tabId) {
@@ -253,86 +381,377 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('tab-' + tabId).classList.add('active');
             event.target.classList.add('active');
+            if (tabId === 'calendar') renderCalendar();
         };
 
-        let currentUserEmail = "";
+        window.previewImage = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64 = e.target.result;
+                    document.getElementById('setupIconBase64').value = base64;
+                    const img = document.getElementById('imagePreview');
+                    img.src = base64;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
 
-        onAuthStateChanged(auth, (user) => {
+        window.openProfileModal = function() {
+            const currentU = usersMap[currentUserEmail] || {};
+            document.getElementById('setupName').value = currentU.name || "";
+            document.getElementById('setupIconBase64').value = currentU.icon || "";
+            document.getElementById('setupBirthday').value = currentU.birthday || "";
+            document.getElementById('setupPhone').value = currentU.phone || "";
+            document.getElementById('setupAddress').value = currentU.address || "";
+
+            const img = document.getElementById('imagePreview');
+            if (currentU.icon) {
+                img.src = currentU.icon;
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+
+            document.getElementById('profileModalTitle').textContent = "プロフィール編集";
+            document.getElementById('closeProfileBtn').style.display = 'block';
+            document.getElementById('profile-setup-screen').style.display = 'block';
+            document.getElementById('portal-screen').style.display = 'none';
+        };
+
+        window.closeProfileModal = function() {
+            document.getElementById('profile-setup-screen').style.display = 'none';
+            document.getElementById('portal-screen').style.display = 'block';
+        };
+
+        window.showEventDetail = function(taskId) {
+            const task = globalTasksData.find(t => t.task_id === taskId);
+            if (!task) return;
+
+            document.getElementById('modalTitle').innerHTML = linkify(task.title);
+            document.getElementById('modalDate').textContent = formatDateTime(task.due_date) || '未設定';
+            document.getElementById('modalCategory').textContent = task.category || 'general';
+
+            let assigneeInfo = task.description;
+            if (assigneeInfo === 'private') {
+                assigneeInfo = '🔒 自分だけ';
+            } else if (usersMap[assigneeInfo]) {
+                const u = usersMap[assigneeInfo];
+                assigneeInfo = `${u.name}`;
+            }
+            document.getElementById('modalAssignee').textContent = assigneeInfo || 'ふたり共有';
+
+            let creatorProfile = usersMap[task.user_id] || { name: task.user_id };
+            document.getElementById('modalCreator').textContent = `${creatorProfile.name} (${formatDateTime(task.created_at)})`;
+
+            document.getElementById('eventModal').style.display = 'flex';
+        };
+
+        window.closeEventModal = function() {
+            document.getElementById('eventModal').style.display = 'none';
+        };
+
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUserEmail = user.email;
-                document.getElementById('auth-screen').style.display = 'none';
-                document.getElementById('portal-screen').style.display = 'block';
-                document.getElementById('userEmailDisplay').textContent = user.email;
-                fetchPortalData();
+                try {
+                    const response = await fetch(`${GAS_API_URL}?action=getData&email=${encodeURIComponent(currentUserEmail)}`);
+                    const data = await response.json();
+
+                    if (data.status === "forbidden") {
+                        document.getElementById('auth-screen').style.display = 'none';
+                        document.getElementById('error-screen').style.display = 'block';
+                        document.getElementById('portal-screen').style.display = 'none';
+                        return;
+                    }
+
+                    usersMap = {};
+                    if (data.users) {
+                        data.users.forEach(u => { 
+                            usersMap[u.email] = { 
+                                name: u.display_name, 
+                                icon: u.icon, 
+                                birthday: u.birthday, 
+                                phone: u.phone, 
+                                address: u.address 
+                            }; 
+                        });
+                    }
+
+                    if (!usersMap[currentUserEmail] || !usersMap[currentUserEmail].name) {
+                        document.getElementById('auth-screen').style.display = 'none';
+                        document.getElementById('profileModalTitle').textContent = "プロフィール設定";
+                        document.getElementById('closeProfileBtn').style.display = 'none';
+                        document.getElementById('profile-setup-screen').style.display = 'block';
+                        return;
+                    }
+
+                    initPortal(data);
+                } catch (e) { console.error(e); }
             } else {
                 document.getElementById('auth-screen').style.display = 'block';
+                document.getElementById('profile-setup-screen').style.display = 'none';
+                document.getElementById('error-screen').style.display = 'none';
                 document.getElementById('portal-screen').style.display = 'none';
             }
         });
 
-        async function fetchPortalData() {
-            if (GAS_API_URL.includes("YOUR_GAS")) return;
-            try {
-                const response = await fetch(GAS_API_URL + "?action=getData");
-                const data = await response.json();
-                renderData(data);
-            } catch (e) { console.error(e); }
+        window.handleSaveProfile = async function(event) {
+            event.preventDefault();
+            const name = document.getElementById('setupName').value;
+            const icon = document.getElementById('setupIconBase64').value || (usersMap[currentUserEmail] ? usersMap[currentUserEmail].icon : '');
+            const birthday = document.getElementById('setupBirthday').value;
+            const phone = document.getElementById('setupPhone').value;
+            const address = document.getElementById('setupAddress').value;
+
+            await fetch(GAS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: "updateProfile",
+                    user_id: currentUserEmail,
+                    display_name: name,
+                    icon: icon,
+                    birthday: birthday,
+                    phone: phone,
+                    address: address
+                })
+            });
+
+            const response = await fetch(`${GAS_API_URL}?action=getData&email=${encodeURIComponent(currentUserEmail)}`);
+            const data = await response.json();
+            usersMap = {};
+            if (data.users) {
+                data.users.forEach(u => { 
+                    usersMap[u.email] = { 
+                        name: u.display_name, 
+                        icon: u.icon, 
+                        birthday: u.birthday, 
+                        phone: u.phone, 
+                        address: u.address 
+                    }; 
+                });
+            }
+            initPortal(data);
+        };
+
+        function renderAvatar(iconVal) {
+            if (!iconVal) return '👤';
+            if (iconVal.startsWith('data:image/') || iconVal.startsWith('http://') || iconVal.startsWith('https://')) {
+                return `<img src="${iconVal}" class="user-avatar" alt="icon">`;
+            }
+            return iconVal;
         }
 
-        function renderData(data) {
+        function initPortal(data) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('profile-setup-screen').style.display = 'none';
+            document.getElementById('portal-screen').style.display = 'block';
+            
+            const myProfile = usersMap[currentUserEmail] || { name: currentUserEmail, icon: '👤' };
+            document.getElementById('headerUserAvatar').innerHTML = renderAvatar(myProfile.icon);
+            document.getElementById('headerUserName').textContent = myProfile.name;
+
+            if (currentUserEmail.includes('admin')) {
+                document.getElementById('adminBadge').style.display = 'inline-block';
+            }
+
+            const assigneeSelect = document.getElementById('inputAssignee');
+            assigneeSelect.innerHTML = `
+                <option value="ふたり共有">🤝 ふたり共有</option>
+                <option value="private">🔒 自分だけ</option>
+            `;
+            Object.keys(usersMap).forEach(email => {
+                if (email.includes('admin')) return;
+                const u = usersMap[email];
+                assigneeSelect.innerHTML += `<option value="${email}">${u.name}</option>`;
+            });
+
+            globalTasksData = data.tasks || [];
+            renderData(globalTasksData);
+        }
+
+        function formatDateTime(isoStr) {
+            if (!isoStr) return '';
+            const replaced = isoStr.replace('T', ' ');
+            return replaced.length >= 16 ? replaced.substring(0, 16).replace(/-/g, '/') : replaced;
+        }
+
+        function linkify(text) {
+            const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+            return text.replace(urlRegex, function(url) {
+                return '<a href="' + url + '" target="_blank" style="color: #DB2777; text-decoration: underline;">' + url + '</a>';
+            });
+        }
+
+        function renderData(tasks) {
             const homeTasks = document.getElementById('homeTasksList');
             const homeEvents = document.getElementById('homeEventsList');
+            const completedList = document.getElementById('listCompleted');
+            const trashList = document.getElementById('listTrash');
+
             if (homeTasks) homeTasks.innerHTML = "";
             if (homeEvents) homeEvents.innerHTML = "";
+            if (completedList) completedList.innerHTML = "";
+            if (trashList) trashList.innerHTML = "";
             
-            ['housework', 'shopping', 'meal', 'finance', 'dateideas', 'surprise'].forEach(cat => {
+            ['shopping', 'dateideas', 'shared'].forEach(cat => {
                 const el = document.getElementById('list' + capitalize(cat));
                 if (el) el.innerHTML = "";
             });
 
-            if (data.tasks) {
-                data.tasks.forEach(task => {
-                    if (task.display_scope === 'private' && task.user_id !== currentUserEmail) return;
+            tasks.forEach(task => {
+                const isTaskAdmin = task.user_id && task.user_id.includes('admin');
+                if (isTaskAdmin && !currentUserEmail.includes('admin')) return;
+                if (task.display_scope === 'private' && task.user_id !== currentUserEmail) return;
 
-                    const li = document.createElement('li');
-                    let tagLabel = task.description || '共有';
-                    let tagClass = 'tag--shared';
-                    if (tagLabel.includes('彼氏')) tagClass = 'tag--partner1';
-                    if (tagLabel.includes('彼女')) tagClass = 'tag--partner2';
-                    if (task.display_scope === 'private') tagClass = 'tag--mine';
+                const li = document.createElement('li');
+                
+                let assigneeInfo = task.description;
+                let tagClass = 'tag';
+                if (assigneeInfo === 'private') {
+                    assigneeInfo = '🔒 自分だけ';
+                    tagClass = 'tag tag--private';
+                } else if (usersMap[assigneeInfo]) {
+                    const u = usersMap[assigneeInfo];
+                    assigneeInfo = `${renderAvatar(u.icon)} ${u.name}`;
+                }
+                const creatorProfile = usersMap[task.user_id] || { name: task.user_id, icon: '👤' };
 
+                let dueBadge = task.due_date ? `<span class="due-badge">📅 ${formatDateTime(task.due_date)}</span>` : '';
+                let creatorMeta = `<span class="task-meta">追加: ${renderAvatar(creatorProfile.icon)} ${creatorProfile.name} (${task.created_at ? formatDateTime(task.created_at) : ''})</span>`;
+
+                if (task.status == 2) {
                     li.innerHTML = `
-                        <div>
-                            <input type="checkbox" ${task.status == 1 ? 'checked' : ''} onchange="updateTask('${task.task_id}', this.checked)">
-                            <span class="tag ${tagClass}">${tagLabel}</span>
-                            <span>${task.title} <small>${task.due_date ? '(' + task.due_date + ')' : ''}</small></span>
+                        <span>${linkify(task.title)}</span>
+                        <div class="action-btns">
+                            <button class="btn-sm btn-restore" onclick="updateTaskStatus('${task.task_id}', 0)">復元</button>
+                            <button class="btn-sm btn-delete" onclick="permanentDelete('${task.task_id}')">完全に削除</button>
                         </div>
                     `;
+                    if (trashList) trashList.appendChild(li);
+                    return;
+                }
 
-                    // 各リストへの振り分け
-                    const targetList = document.getElementById('list' + capitalize(task.category));
-                    if (targetList) targetList.appendChild(li.cloneNode(true));
+                if (task.status == 1) {
+                    li.innerHTML = `
+                        <div class="task-info">
+                            <div><span class="${tagClass}">${assigneeInfo || 'ふたり共有'}</span> ${dueBadge}</div>
+                            <span style="text-decoration: line-through; color: #888;">${linkify(task.title)}</span>
+                            ${creatorMeta}
+                        </div>
+                        <div class="action-btns">
+                            <button class="btn-sm btn-restore" onclick="updateTaskStatus('${task.task_id}', 0)">未完了に戻す</button>
+                            <button class="btn-sm btn-delete" onclick="updateTaskStatus('${task.task_id}', 2)">ゴミ箱へ</button>
+                        </div>
+                    `;
+                    if (completedList) completedList.appendChild(li);
+                    return;
+                }
 
-                    // ホーム画面への振り分け
-                    if (task.category === 'housework' && homeTasks) {
-                        homeTasks.appendChild(li.cloneNode(true));
-                    }
-                    if (task.category === 'dateideas' && homeEvents) {
-                        homeEvents.appendChild(li.cloneNode(true));
+                li.innerHTML = `
+                    <div class="task-info">
+                        <div>
+                            <input type="checkbox" onchange="updateTaskStatus('${task.task_id}', 1)">
+                            <span class="${tagClass}">${assigneeInfo || 'ふたり共有'}</span>
+                            ${dueBadge}
+                        </div>
+                        <span style="font-weight: 500;">${linkify(task.title)}</span>
+                        ${creatorMeta}
+                    </div>
+                    <button class="btn-sm btn-delete" onclick="updateTaskStatus('${task.task_id}', 2)">削除</button>
+                `;
+
+                const targetList = document.getElementById('list' + capitalize(task.category));
+                if (targetList) targetList.appendChild(li.cloneNode(true));
+
+                if (task.category === 'shared' && homeTasks) homeTasks.appendChild(li.cloneNode(true));
+                if (task.category === 'dateideas' && homeEvents) homeEvents.appendChild(li.cloneNode(true));
+            });
+        }
+
+        window.renderCalendar = function() {
+            const grid = document.getElementById('calendarGrid');
+            const title = document.getElementById('calMonthTitle');
+            grid.innerHTML = "";
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            title.innerHTML = `📅 ${year}年 ${month + 1}月 <div class="toolbar" style="display:flex; gap:8px;"><button class="btn-sm" onclick="changeMonth(-1)">◀ 前月</button><button class="btn-sm" onclick="changeMonth(1)">翌月 ▶</button></div>`;
+
+            ['日', '月', '火', '水', '木', '金', '土'].forEach(d => {
+                const head = document.createElement('div');
+                head.className = 'calendar-header';
+                head.textContent = d;
+                grid.appendChild(head);
+            });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            for (let day = 1; day <= lastDate; day++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-cell';
+                const datePrefix = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (datePrefix === todayStr) cell.classList.add('today');
+
+                cell.innerHTML = `<div class="cal-day-num">${day}</div>`;
+
+                // 1. 誕生日の毎年繰り返し判定（月と日 MM-DD のみで比較）
+                Object.keys(usersMap).forEach(email => {
+                    const u = usersMap[email];
+                    if (email.includes('admin') && !currentUserEmail.includes('admin')) return;
+                    if (u.birthday) {
+                        const bdayMonthDay = u.birthday.substring(5); // "YYYY-MM-DD" から "MM-DD" を抽出
+                        const cellMonthDay = datePrefix.substring(5);   // "YYYY-MM-DD" から "MM-DD" を抽出
+                        if (bdayMonthDay === cellMonthDay) {
+                            const bdayEv = document.createElement('div');
+                            bdayEv.className = 'cal-birthday-item';
+                            bdayEv.textContent = `🎂 ${u.name}の誕生日`;
+                            cell.appendChild(bdayEv);
+                        }
                     }
                 });
+
+                // 2. 通常のタスク・予定を反映
+                globalTasksData.forEach(task => {
+                    const isTaskAdmin = task.user_id && task.user_id.includes('admin');
+                    if (isTaskAdmin && !currentUserEmail.includes('admin')) return;
+                    if (task.display_scope === 'private' && task.user_id !== currentUserEmail) return;
+
+                    if (task.status != 2 && task.due_date && task.due_date.startsWith(datePrefix)) {
+                        const ev = document.createElement('div');
+                        ev.className = 'cal-event-item';
+                        const timePart = task.due_date.length >= 16 ? task.due_date.substring(11, 16) + ' ' : '';
+                        ev.textContent = timePart + task.title;
+                        ev.onclick = () => showEventDetail(task.task_id);
+                        cell.appendChild(ev);
+                    }
+                });
+
+                grid.appendChild(cell);
             }
-        }
+        };
+
+        window.changeMonth = function(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+            renderCalendar();
+        };
 
         window.handleAddTask = async function(event) {
             event.preventDefault();
-            if (GAS_API_URL.includes("YOUR_GAS")) { alert("GAS URLを設定してください"); return; }
-
             const title = document.getElementById('inputTitle').value;
             const dueDate = document.getElementById('inputDate').value;
             const category = document.getElementById('inputCategory').value;
             const assignee = document.getElementById('inputAssignee').value;
-            const scope = assignee === '自分だけ' ? 'private' : 'shared';
+            const scope = assignee === 'private' ? 'private' : 'shared';
 
             await fetch(GAS_API_URL, {
                 method: 'POST',
@@ -348,15 +767,34 @@
             });
             document.getElementById('inputTitle').value = "";
             document.getElementById('inputDate').value = "";
-            fetchPortalData();
+            
+            const response = await fetch(`${GAS_API_URL}?action=getData&email=${encodeURIComponent(currentUserEmail)}`);
+            const data = await response.json();
+            globalTasksData = data.tasks || [];
+            renderData(globalTasksData);
         };
 
-        window.updateTask = async function(taskId, isChecked) {
-            if (GAS_API_URL.includes("YOUR_GAS")) return;
+        window.updateTaskStatus = async function(taskId, newStatus) {
             await fetch(GAS_API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: "updateTaskStatus", task_id: taskId, status: isChecked ? 1 : 0 })
+                body: JSON.stringify({ action: "updateTaskStatus", user_id: currentUserEmail, task_id: taskId, status: newStatus })
             });
+            const response = await fetch(`${GAS_API_URL}?action=getData&email=${encodeURIComponent(currentUserEmail)}`);
+            const data = await response.json();
+            globalTasksData = data.tasks || [];
+            renderData(globalTasksData);
+        };
+
+        window.permanentDelete = async function(taskId) {
+            if (!confirm("本当に完全に削除しますか？")) return;
+            await fetch(GAS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "permanentDelete", user_id: currentUserEmail, task_id: taskId })
+            });
+            const response = await fetch(`${GAS_API_URL}?action=getData&email=${encodeURIComponent(currentUserEmail)}`);
+            const data = await response.json();
+            globalTasksData = data.tasks || [];
+            renderData(globalTasksData);
         };
 
         function capitalize(str) {
