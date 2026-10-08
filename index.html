@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ふたりの同棲ポータル</title>
+    <title>ふたりのポータル</title>
+    <!-- ファビコン（ブラウザータブ用） -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2225%22 fill=%22%23DB2777%22/><text x=%2250%%22 y=%2255%%22 font-size=%2255%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22>🏠</text></svg>">
+
+    <!-- Apple Touch Icon（iPhone / iPad ホーム画面追加用） -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2225%22 fill=%22%23DB2777%22/><text x=%2250%%22 y=%2255%%22 font-size=%2255%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22>🏠</text></svg>">
     <style>
         :root {
             --color-primary: #DB2777;
@@ -147,9 +152,32 @@
             gap: 8px;
             margin-bottom: 20px;
         }
-        @media (max-width: 768px) {
-            .add-form { grid-template-columns: 1fr; }
+        
+        /* ホーム画面の2カラム配置 */
+        .home-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
         }
+
+        /* 520px以下の画面幅における縦並び（下配置）ルール */
+        @media (max-width: 520px) {
+            .add-form {
+                grid-template-columns: 1fr !important;
+            }
+            .home-grid {
+                grid-template-columns: 1fr !important;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .user-info {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
         .add-form input, .add-form select {
             padding: 8px 12px;
             border: 1px solid var(--color-border);
@@ -189,7 +217,6 @@
         .tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: 700; background-color: #FCE7F3; color: #9D174D; display: inline-flex; align-items: center; gap: 4px; }
         .tag--private { background-color: #F3F4F6; color: #374151; }
 
-        /* カレンダー用スタイル */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
         .calendar-header { font-weight: bold; background-color: #FCE7F3; color: #9D174D; padding: 8px; border-radius: 4px; font-size: 0.85rem; }
         .calendar-cell { background: #FAFAFA; border: 1px solid #E5E7EB; min-height: 90px; padding: 4px; border-radius: 4px; text-align: left; font-size: 0.8rem; overflow: hidden; }
@@ -221,14 +248,15 @@
 <body>
 
     <div id="auth-screen">
-        <h2>ふたりの同棲ポータル</h2>
+        <h2>ふたりのポータル</h2>
         <p style="font-size: 0.9rem; color: #666;">Googleアカウントでログインしてください。</p>
         <button class="login-btn" onclick="loginWithGoogle()">Googleアカウントでログイン</button>
     </div>
 
+    <!-- プロフィール設定画面 -->
     <div id="profile-setup-screen">
         <h2 id="profileModalTitle">プロフィール設定</h2>
-        <p style="font-size: 0.9rem; color: #666;">表示名とアイコン画像、誕生日などを設定してください。</p>
+        <p style="font-size: 0.9rem; color: #666;">表示名とアイコン画像、誕生日を設定してください。</p>
         <form onsubmit="handleSaveProfile(event)">
             <input type="text" id="setupName" placeholder="表示名 (例: ゆうた)" required style="width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box;">
             
@@ -240,10 +268,7 @@
             <input type="hidden" id="setupIconBase64">
 
             <label style="font-size:0.8rem; display:block; text-align:left; color:#555;">誕生日 (毎年自動でカレンダーに表示):</label>
-            <input type="date" id="setupBirthday" style="width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box;">
-
-            <input type="text" id="setupPhone" placeholder="電話番号 (任意)" style="width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box;">
-            <input type="text" id="setupAddress" placeholder="住所 (任意)" style="width:100%; padding:8px; margin-bottom:16px; box-sizing:border-box;">
+            <input type="date" id="setupBirthday" style="width:100%; padding:8px; margin-bottom:16px; box-sizing:border-box;">
 
             <button type="submit" class="form-btn">保存する</button>
             <button type="button" id="closeProfileBtn" onclick="closeProfileModal()" style="display:none; background:#9CA3AF; margin-top:8px;" class="form-btn">キャンセル</button>
@@ -258,7 +283,7 @@
 
     <div id="portal-screen">
         <header>
-            <h1>ふたりの同棲ポータル <span id="adminBadge" style="font-size:0.75rem; background:#10B981; padding:2px 6px; border-radius:4px; display:none;">管理者モード</span></h1>
+            <h1>ふたりのポータル <span id="adminBadge" style="font-size:0.75rem; background:#10B981; padding:2px 6px; border-radius:4px; display:none;">管理者モード</span></h1>
             <div class="user-info">
                 <button class="user-profile-btn" onclick="openProfileModal()">
                     <span id="headerUserAvatar" class="user-avatar">👤</span>
@@ -275,7 +300,7 @@
             <button class="tab-btn" onclick="switchTab('dateideas')">🎉 デート</button>
             <button class="tab-btn" onclick="switchTab('shared')">🤝 共有</button>
             <button class="tab-btn" onclick="switchTab('completed')">✅ 実行済み</button>
-            <button class="tab-btn" onclick="switchTab('trash')">🗑️ 削除</button>
+            <button class="tab-btn" onclick="switchTab('trash')">🗑️ ゴミ箱</button>
         </nav>
 
         <main class="main-container">
@@ -298,9 +323,9 @@
                     </form>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div class="home-grid">
                     <section class="card">
-                        <h3>本日の未完了タスク</h3>
+                        <h3>今日のタスク</h3>
                         <ul class="task-list" id="homeTasksList"></ul>
                     </section>
                     <section class="card">
@@ -329,7 +354,7 @@
             <div id="tab-completed" class="tab-content"><div class="card"><h3>✅ 実行済み（完了）一覧</h3><ul class="task-list" id="listCompleted"></ul></div></div>
             <div id="tab-trash" class="tab-content">
                 <div class="card">
-                    <h3>🗑️ 削除（ゴミ箱）</h3>
+                    <h3>🗑️ ゴミ箱</h3>
                     <p style="font-size:0.85rem; color:#666;">ゴミ箱内のアイテムは、7日経過すると自動で完全に削除されます。</p>
                     <ul class="task-list" id="listTrash"></ul>
                 </div>
@@ -403,9 +428,18 @@
             const currentU = usersMap[currentUserEmail] || {};
             document.getElementById('setupName').value = currentU.name || "";
             document.getElementById('setupIconBase64').value = currentU.icon || "";
-            document.getElementById('setupBirthday').value = currentU.birthday || "";
-            document.getElementById('setupPhone').value = currentU.phone || "";
-            document.getElementById('setupAddress').value = currentU.address || "";
+            
+            let bday = currentU.birthday || "";
+            const jstBday = toJSTDate(bday);
+            if (jstBday) {
+                const yyyy = jstBday.getUTCFullYear();
+                const mm = String(jstBday.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(jstBday.getUTCDate()).padStart(2, '0');
+                bday = `${yyyy}-${mm}-${dd}`;
+            } else if (bday.includes('T')) {
+                bday = bday.split('T')[0];
+            }
+            document.getElementById('setupBirthday').value = bday;
 
             const img = document.getElementById('imagePreview');
             if (currentU.icon) {
@@ -431,7 +465,7 @@
             if (!task) return;
 
             document.getElementById('modalTitle').innerHTML = linkify(task.title);
-            document.getElementById('modalDate').textContent = formatDateTime(task.due_date) || '未設定';
+            document.getElementById('modalDate').textContent = formatDateTimeJST(task.due_date) || '未設定';
             document.getElementById('modalCategory').textContent = task.category || 'general';
 
             let assigneeInfo = task.description;
@@ -444,7 +478,7 @@
             document.getElementById('modalAssignee').textContent = assigneeInfo || 'ふたり共有';
 
             let creatorProfile = usersMap[task.user_id] || { name: task.user_id };
-            document.getElementById('modalCreator').textContent = `${creatorProfile.name} (${formatDateTime(task.created_at)})`;
+            document.getElementById('modalCreator').textContent = `${creatorProfile.name} (${formatDateTimeJST(task.created_at)})`;
 
             document.getElementById('eventModal').style.display = 'flex';
         };
@@ -473,9 +507,7 @@
                             usersMap[u.email] = { 
                                 name: u.display_name, 
                                 icon: u.icon, 
-                                birthday: u.birthday, 
-                                phone: u.phone, 
-                                address: u.address 
+                                birthday: u.birthday 
                             }; 
                         });
                     }
@@ -503,8 +535,6 @@
             const name = document.getElementById('setupName').value;
             const icon = document.getElementById('setupIconBase64').value || (usersMap[currentUserEmail] ? usersMap[currentUserEmail].icon : '');
             const birthday = document.getElementById('setupBirthday').value;
-            const phone = document.getElementById('setupPhone').value;
-            const address = document.getElementById('setupAddress').value;
 
             await fetch(GAS_API_URL, {
                 method: 'POST',
@@ -513,9 +543,7 @@
                     user_id: currentUserEmail,
                     display_name: name,
                     icon: icon,
-                    birthday: birthday,
-                    phone: phone,
-                    address: address
+                    birthday: birthday
                 })
             });
 
@@ -527,9 +555,7 @@
                     usersMap[u.email] = { 
                         name: u.display_name, 
                         icon: u.icon, 
-                        birthday: u.birthday, 
-                        phone: u.phone, 
-                        address: u.address 
+                        birthday: u.birthday 
                     }; 
                 });
             }
@@ -572,10 +598,43 @@
             renderData(globalTasksData);
         }
 
-        function formatDateTime(isoStr) {
-            if (!isoStr) return '';
-            const replaced = isoStr.replace('T', ' ');
-            return replaced.length >= 16 ? replaced.substring(0, 16).replace(/-/g, '/') : replaced;
+        function toJSTDate(isoStr) {
+            if (!isoStr) return null;
+            const d = new Date(isoStr);
+            if (isNaN(d.getTime())) return null;
+            return new Date(d.getTime() + (9 * 60 * 60 * 1000));
+        }
+
+        function formatDateTimeJST(isoStr) {
+            const jst = toJSTDate(isoStr);
+            if (!jst) return isoStr || '';
+            const yyyy = jst.getUTCFullYear();
+            const mm = String(jst.getUTCMonth() + 1).padStart(2, '0');
+            const dd = String(jst.getUTCDate()).padStart(2, '0');
+            const hh = String(jst.getUTCHours()).padStart(2, '0');
+            const min = String(jst.getUTCMinutes()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+        }
+
+        function getJSTDatePart(isoStr) {
+            const jst = toJSTDate(isoStr);
+            if (!jst) return '';
+            const yyyy = jst.getUTCFullYear();
+            const mm = String(jst.getUTCMonth() + 1).padStart(2, '0');
+            const dd = String(jst.getUTCDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function getJSTBirthdayMonthDay(bdayStr) {
+            const jst = toJSTDate(bdayStr);
+            if (!jst) return '';
+            const mm = String(jst.getUTCMonth() + 1).padStart(2, '0');
+            const dd = String(jst.getUTCDate()).padStart(2, '0');
+            return `${mm}-${dd}`;
+        }
+
+        function getTodayJST() {
+            return getJSTDatePart(new Date().toISOString());
         }
 
         function linkify(text) {
@@ -619,8 +678,8 @@
                 }
                 const creatorProfile = usersMap[task.user_id] || { name: task.user_id, icon: '👤' };
 
-                let dueBadge = task.due_date ? `<span class="due-badge">📅 ${formatDateTime(task.due_date)}</span>` : '';
-                let creatorMeta = `<span class="task-meta">追加: ${renderAvatar(creatorProfile.icon)} ${creatorProfile.name} (${task.created_at ? formatDateTime(task.created_at) : ''})</span>`;
+                let dueBadge = task.due_date ? `<span class="due-badge">📅 ${formatDateTimeJST(task.due_date)}</span>` : '';
+                let creatorMeta = `<span class="task-meta">追加: ${renderAvatar(creatorProfile.icon)} ${creatorProfile.name} (${task.created_at ? formatDateTimeJST(task.created_at) : ''})</span>`;
 
                 if (task.status == 2) {
                     li.innerHTML = `
@@ -694,24 +753,24 @@
                 grid.appendChild(document.createElement('div'));
             }
 
+            const todayStr = getTodayJST();
+
             for (let day = 1; day <= lastDate; day++) {
                 const cell = document.createElement('div');
                 cell.className = 'calendar-cell';
                 const datePrefix = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
-                const todayStr = new Date().toISOString().split('T')[0];
                 if (datePrefix === todayStr) cell.classList.add('today');
 
                 cell.innerHTML = `<div class="cal-day-num">${day}</div>`;
 
-                // 1. 誕生日の毎年繰り返し判定（月と日 MM-DD のみで比較）
                 Object.keys(usersMap).forEach(email => {
                     const u = usersMap[email];
                     if (email.includes('admin') && !currentUserEmail.includes('admin')) return;
                     if (u.birthday) {
-                        const bdayMonthDay = u.birthday.substring(5); // "YYYY-MM-DD" から "MM-DD" を抽出
-                        const cellMonthDay = datePrefix.substring(5);   // "YYYY-MM-DD" から "MM-DD" を抽出
-                        if (bdayMonthDay === cellMonthDay) {
+                        const bdayMonthDay = getJSTBirthdayMonthDay(u.birthday);
+                        const cellMonthDay = datePrefix.substring(5);
+                        if (bdayMonthDay && bdayMonthDay === cellMonthDay) {
                             const bdayEv = document.createElement('div');
                             bdayEv.className = 'cal-birthday-item';
                             bdayEv.textContent = `🎂 ${u.name}の誕生日`;
@@ -720,19 +779,23 @@
                     }
                 });
 
-                // 2. 通常のタスク・予定を反映
                 globalTasksData.forEach(task => {
                     const isTaskAdmin = task.user_id && task.user_id.includes('admin');
                     if (isTaskAdmin && !currentUserEmail.includes('admin')) return;
                     if (task.display_scope === 'private' && task.user_id !== currentUserEmail) return;
 
-                    if (task.status != 2 && task.due_date && task.due_date.startsWith(datePrefix)) {
-                        const ev = document.createElement('div');
-                        ev.className = 'cal-event-item';
-                        const timePart = task.due_date.length >= 16 ? task.due_date.substring(11, 16) + ' ' : '';
-                        ev.textContent = timePart + task.title;
-                        ev.onclick = () => showEventDetail(task.task_id);
-                        cell.appendChild(ev);
+                    if (task.status != 2 && task.due_date) {
+                        const taskDatePart = getJSTDatePart(task.due_date);
+
+                        if (taskDatePart === datePrefix) {
+                            const ev = document.createElement('div');
+                            ev.className = 'cal-event-item';
+                            const formatted = formatDateTimeJST(task.due_date);
+                            const timePart = formatted.length >= 16 ? formatted.substring(11, 16) + ' ' : '';
+                            ev.textContent = timePart + task.title;
+                            ev.onclick = () => showEventDetail(task.task_id);
+                            cell.appendChild(ev);
+                        }
                     }
                 });
 
