@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowedUser() {
+      return request.auth != null && (
+        request.auth.token.email == 'nakajima.natsu72@gmail.com' || 
+        request.auth.token.email == 'konohacha@gmail.com' || 
+        request.auth.token.email == 'administrator.0720@gmail.com'
+      );
+    }
+
+    match /users/{userId} {
+      allow read, write: if isAllowedUser();
+    }
+
+    match /tasks/{taskId} {
+      allow read, write: if isAllowedUser();
+    }
+  }
+}
