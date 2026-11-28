@@ -32,7 +32,6 @@ import {
   History,
   Info,
   X,
-  ArrowLeft,
   Copy,
   ExternalLink,
 } from 'lucide-react';
@@ -68,7 +67,6 @@ interface KaimonoCompareAppProps {
   onUnauthorized: () => void;
 }
 
-const PORTAL_URL = 'https://nakajim0720.github.io/portal/';
 const MIGRATION_DONE_KEY = 'kaimono_migrated_to_price_prefix_v1';
 const SHOPPING_PORTAL_MIGRATION_KEY = 'kaimono_shopping_migrated_to_portal_v1';
 
@@ -268,12 +266,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           setTimeout(() => setMigrationMessage(''), 5000);
         }
       } catch (err) {
-        const fsErr = err as FirestoreError;
-        if (fsErr?.code === 'permission-denied') {
-          onUnauthorized();
-        } else {
-          console.error('Migration check skipped or failed:', err);
-        }
+        console.warn('Migration check skipped:', err);
       }
     };
 
@@ -656,14 +649,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <a
-              href={PORTAL_URL}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
-              aria-label="ポータルへ戻る"
-              title="ポータルへ戻る"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </a>
             <span className="bg-emerald-600 text-white p-1.5 rounded-lg shrink-0">
               <ShoppingCart className="w-4 h-4" />
             </span>
