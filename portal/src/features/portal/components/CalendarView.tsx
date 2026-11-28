@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Cake, Calendar as CalendarIcon, X } from 'lucide-react';
-import type { PortalCategory, PortalItem, PortalUserProfile } from '../types';
+import type {
+  PortalCategory,
+  PortalItem,
+  PortalRepeatRule,
+  PortalUserProfile,
+} from '../types';
 import {
   formatDateTimeJst,
   getJstBirthdayMonthDay,
@@ -20,6 +25,7 @@ interface CalendarViewProps {
       dueDate: string;
       category: PortalCategory;
       assignee: string;
+      repeatRule?: PortalRepeatRule;
     }
   ) => Promise<void>;
 }
@@ -69,6 +75,14 @@ function calculateAgeJst(birthday: string, referenceDateKey?: string): number | 
     age -= 1;
   }
   return age >= 0 ? age : null;
+}
+
+function getAnniversaryYears(itemDueDate: string, targetYear: number): number | null {
+  const dateKey = getJstDateKey(itemDueDate);
+  const startYear = Number(dateKey.slice(0, 4));
+  if (Number.isNaN(startYear)) return null;
+  const diff = targetYear - startYear;
+  return diff > 0 ? diff : null;
 }
 
 function getFallbackNameFromEmail(email: string): string {
@@ -123,6 +137,11 @@ export function CalendarView({
     return true;
   });
 
+  // 記念日アイテム（毎年カレンダーに表示）
+  const yearlyAnniversaries = visibleItems.filter((item) => item.repeatRule === 'anniversary');
+  // 通常の予定アイテム（毎週・毎月・毎年の予定も含む）
+  const regularItems = visibleItems.filter((item) => item.repeatRule !== 'anniversary');
+
   const cells: Array<{ key: string; day: number | null }> = [];
   for (let i = 0; i < firstDayOfWeek; i += 1) {
     cells.push({ key: `pad-start-${i}`, day: null });
@@ -165,8 +184,14 @@ export function CalendarView({
       })
     : [];
 
+  const selectedDayAnniversaries = selectedDateKey
+    ? yearlyAnniversaries.filter(
+        (item) => getJstDateKey(item.dueDate).slice(5) === selectedDateKey.slice(5)
+      )
+    : [];
+
   const selectedDayItems = selectedDateKey
-    ? visibleItems.filter((item) => getJstDateKey(item.dueDate) === selectedDateKey)
+    ? regularItems.filter((item) => getJstDateKey(item.dueDate) === selectedDateKey)
     : [];
 
   const selectedDayLabel = (() => {
@@ -188,7 +213,7 @@ export function CalendarView({
               {year}年 {month + 1}月
             </h2>
             <p className="text-xs text-slate-500">
-              日付をタップすると、その日の予定一覧や誕生日詳細を確認できます。
+              日付をタップすると、その日の予定一覧や誕生日・記念日詳細を確認できます。
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -254,7 +279,12 @@ export function CalendarView({
               return getJstBirthdayMonthDay(u.birthday) === cellMonthDay;
             });
 
-            const dayItems = visibleItems.filter((item) => getJstDateKey(item.dueDate) === cell.key);
+            const anniversariesHere = yearlyAnniversaries.filter(
+              (item) => getJstDateKey(item.dueDate).slice(5) === cellMonthDay
+            );
+
+            const dayItems = regularItems.filter((item) => getJstDateKey(item.dueDate) === cell.key);
+            const totalEventsCount = anniversariesHere.length + dayItems.length;
 
             return (
               <div
@@ -288,9 +318,9 @@ export function CalendarView({
                   >
                     {cell.day}
                   </span>
-                  {dayItems.length > 1 && (
+                  {totalEventsCount > 1 && (
                     <span className="px-1.5 py-0.2 rounded-full bg-pink-100 text-pink-800 text-[10px] font-bold shrink-0">
-                      {dayItems.length}件
+                      {totalEventsCount}件
                     </span>
                   )}
                 </div>
@@ -307,6 +337,21 @@ export function CalendarView({
                     >
                       🎂 {displayName}
                       {ageLabel}
+                    </span>
+                  );
+                })}
+
+                {anniversariesHere.slice(0, 2).map((item) => {
+                  const years = getAnniversaryYears(item.dueDate, year);
+                  const yearsLabel = years !== null ? ` (${years}周年)` : '';
+                  return (
+                    <span
+                      key={`anniv-${item.id}`}
+                      className="w-full px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 text-[11px] font-semibold truncate block"
+                      title={`🎉 ${item.title}${yearsLabel}`}
+                    >
+                      🎉 {item.title}
+                      {yearsLabel}
                     </span>
                   );
                 })}
@@ -338,7 +383,7 @@ export function CalendarView({
         </div>
       </section>
 
-      {/* 日付選択時の予定・誕生日一覧モーダル */}
+      {/* 日付選択時の予定・誕生日・記念日一覧モーダル */}
       {isDayListOpen && selectedDateKey && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full min-w-0 overflow-hidden p-5 shadow-xl space-y-4 my-auto">
@@ -401,14 +446,46 @@ export function CalendarView({
               </div>
             )}
 
+            {selectedDayAnniversaries.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-purple-800">記念日（毎年表示）</p>
+                <ul className="space-y-2">
+                  {selectedDayAnniversaries.map((item) => {
+                    const targetYear = Number(selectedDateKey.slice(0, 4));
+                    const years = getAnniversaryYears(item.dueDate, targetYear);
+                    return (
+                      <li key={`modal-anniv-${item.id}`}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDetailItemId(item.id)}
+                          className="w-full p-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-left flex items-center justify-between gap-3 transition"
+                        >
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="font-bold text-purple-950 text-sm break-words">
+                              🎉 {item.title}
+                              {years !== null ? `（${years}周年）` : ''}
+                            </p>
+                            <p className="text-xs text-purple-800">タップして詳細・編集</p>
+                          </div>
+                          <span className="text-xs font-semibold text-purple-900 shrink-0">
+                            詳細
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
             <div className="space-y-2">
               <p className="text-xs font-bold text-slate-600">
                 予定（{selectedDayItems.length}件）
               </p>
               {selectedDayItems.length === 0 ? (
                 <p className="text-sm text-slate-500 py-3">
-                  {selectedDayBirthdays.length > 0
-                    ? 'この日の登録予定はありません。'
+                  {selectedDayBirthdays.length > 0 || selectedDayAnniversaries.length > 0
+                    ? 'この日の通常予定はありません。'
                     : 'この日の予定はありません。'}
                 </p>
               ) : (
@@ -456,7 +533,7 @@ export function CalendarView({
         </div>
       )}
 
-      {/* 予定詳細・編集モーダル（共通コンポーネント利用） */}
+      {/* 予定詳細・編集モーダル */}
       <TaskDetailModal
         item={selectedDetailItem}
         usersMap={usersMap}

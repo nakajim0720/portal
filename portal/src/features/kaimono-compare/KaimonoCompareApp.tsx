@@ -65,6 +65,11 @@ interface KaimonoCompareAppProps {
   user: User;
   displayName?: string;
   onUnauthorized: () => void;
+  onConsultCardApproval?: (payload: {
+    name: string;
+    price?: string;
+    url?: string;
+  }) => void;
 }
 
 const MIGRATION_DONE_KEY = 'kaimono_migrated_to_price_prefix_v1';
@@ -92,6 +97,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
   user,
   displayName,
   onUnauthorized,
+  onConsultCardApproval,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('compare');
   const [scannerTarget, setScannerTarget] = useState<'search' | 'form' | null>(null);
@@ -117,6 +123,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
   const [isSale, setIsSale] = useState<boolean>(false);
   const [memo, setMemo] = useState<string>('');
   const [formFeedback, setFormFeedback] = useState<string>('');
+  const [isSavingRecord, setIsSavingRecord] = useState<boolean>(false);
 
   // 検索ステート
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -157,7 +164,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     }
   }, []);
 
-  // 旧コレクション（stores, priceRecords）の移行 + 旧買い物リスト（price_shopping_list）の portal_items 統合移行
+  // 旧コレクション移行（エラー時は強制ログアウトせずスキップ）
   useEffect(() => {
     let cancelled = false;
 
@@ -216,7 +223,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           localStorage.setItem(MIGRATION_DONE_KEY, 'true');
         }
 
-        // 旧 price_shopping_list -> portal_items (category: 'shopping') への統合移行（未完了アイテム）
         if (localStorage.getItem(SHOPPING_PORTAL_MIGRATION_KEY) !== 'true') {
           const oldListSnap = await getDocs(collection(db, 'price_shopping_list'));
           const portalSnap = await getDocs(collection(db, 'portal_items'));
@@ -274,7 +280,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [onUnauthorized, user.email]);
+  }, [user.email]);
 
   // price_stores, price_records, および portal_items（お買い物）のリアルタイム購読
   useEffect(() => {
@@ -319,7 +325,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
         snapshot.forEach((docSnap) => {
           const raw = docSnap.data();
           if (raw.category !== 'shopping') return;
-          if (raw.status === 2) return; // ゴミ箱は非表示
+          if (raw.status === 2) return;
           if (raw.displayScope === 'private' && raw.createdBy && raw.createdBy !== user.email) {
             return;
           }
@@ -336,7 +342,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           });
         });
 
-        // 未完了を上、完了を下にし、それぞれ作成日時の新しい順
         list.sort((a, b) => {
           if (a.completed !== b.completed) {
             return a.completed ? 1 : -1;
@@ -393,12 +398,14 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     return Array.from(set);
   }, [records]);
 
-  const resetRegisterForm = () => {
+  const resetRegisterForm = (keepStore = false) => {
     setEditingRecordId(null);
     setJanCode('');
     setProductName('');
     setProductUrl('');
-    setStoreId('');
+    if (!keepStore) {
+      setStoreId('');
+    }
     setPriceInput('');
     setQuantityInput('1');
     setIsSale(false);
@@ -438,41 +445,50 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
 
   const handleSaveRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productName.trim() || !storeId || !priceInput) return;
+    if (isSavingRecord || !productName.trim() || !storeId || !priceInput) return;
 
-    const priceNum = Math.round(parseFloat(priceInput));
-    const quantityNum = parseFloat(quantityInput) || 1;
-    const { unitPrice, unitPriceBase } = calculateUnitPrice(priceNum, quantityNum, unit);
-    const cleanedCode = normalizeCode(janCode);
-    const normalizedUrl = sanitizeUrl(productUrl);
-    const validUrl = normalizedUrl && isSafeHttpUrl(normalizedUrl) ? normalizedUrl : '';
+    setIsSavingRecord(true);
+    try {
+      const priceNum = Math.round(parseFloat(priceInput));
+      const quantityNum = parseFloat(quantityInput) || 1;
+      const { unitPrice, unitPriceBase } = calculateUnitPrice(priceNum, quantityNum, unit);
+      const cleanedCode = normalizeCode(janCode);
+      const normalizedUrl = sanitizeUrl(productUrl);
+      const validUrl = normalizedUrl && isSafeHttpUrl(normalizedUrl) ? normalizedUrl : '';
 
-    const payload = {
-      janCode: cleanedCode,
-      productName: productName.trim(),
-      productUrl: validUrl,
-      storeId,
-      priceTaxIncluded: priceNum,
-      quantity: quantityNum,
-      unit,
-      unitPrice,
-      unitPriceBase,
-      recordedDate,
-      isSale,
-      memo: memo.trim(),
-      createdAt: Date.now(),
-    };
+      const payload = {
+        janCode: cleanedCode,
+        productName: productName.trim(),
+        productUrl: validUrl,
+        storeId,
+        priceTaxIncluded: priceNum,
+        quantity: quantityNum,
+        unit,
+        unitPrice,
+        unitPriceBase,
+        recordedDate,
+        isSale,
+        memo: memo.trim(),
+        createdAt: Date.now(),
+      };
 
-    if (editingRecordId) {
-      await updateDoc(doc(db, 'price_records', editingRecordId), payload);
-      setFormFeedback('価格データを更新しました');
-    } else {
-      await addDoc(collection(db, 'price_records'), payload);
-      setFormFeedback('価格データを登録しました');
+      if (editingRecordId) {
+        await updateDoc(doc(db, 'price_records', editingRecordId), payload);
+        setFormFeedback('価格データを更新しました');
+        resetRegisterForm(false);
+      } else {
+        await addDoc(collection(db, 'price_records'), payload);
+        setFormFeedback('価格データを登録しました');
+        resetRegisterForm(true);
+      }
+
+      setTimeout(() => setFormFeedback(''), 3000);
+    } catch (err) {
+      console.error('Failed to save record:', err);
+      setFormFeedback('登録に失敗しました。通信状況を確認してください');
+    } finally {
+      setIsSavingRecord(false);
     }
-
-    resetRegisterForm();
-    setTimeout(() => setFormFeedback(''), 3000);
   };
 
   const startEditRecord = (rec: PriceRecord) => {
@@ -565,7 +581,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     );
   }, [records, searchQuery]);
 
-  // ポータルの「お買い物（portal_items / category: shopping）」へ直接追加
   const addShoppingItem = async (name: string, jan = '', itemMemo = '') => {
     const trimmedName = name.trim();
     const trimmedMemo = itemMemo.trim();
@@ -588,7 +603,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
       trashedAt: null,
     });
 
-    // LINE通知（C-1: 共有買い物リスト追加は任意）
     void sendLineNotification({
       trigger: 'kaimonoListAdded',
       appName: '価格比較・買い物管理',
@@ -599,7 +613,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     });
   };
 
-  // ポータルの status (0: 未完了 / 1: 完了) と双方向同期
   const toggleShoppingItem = async (item: SyncedShoppingItem) => {
     await updateDoc(doc(db, 'portal_items', item.id), {
       status: item.completed ? 0 : 1,
@@ -607,7 +620,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     });
   };
 
-  // ポータルのゴミ箱 (status: 2) へ移動
   const deleteShoppingItem = async (id: string) => {
     await updateDoc(doc(db, 'portal_items', id), {
       status: 2,
@@ -818,6 +830,25 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
                           <ShoppingCart className="w-4 h-4 shrink-0" />
                           <span>リスト追加</span>
                         </button>
+                        {onConsultCardApproval && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onConsultCardApproval({
+                                name: group.productName,
+                                price:
+                                  group.minTotalPrice !== Infinity
+                                    ? String(group.minTotalPrice)
+                                    : '',
+                                url: hasValidLink ? group.productUrl : '',
+                              })
+                            }
+                            className="flex-1 sm:flex-none px-3.5 py-2 bg-pink-50 hover:bg-pink-100 active:bg-pink-200 text-pink-700 border border-pink-200/70 rounded-xl text-base font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <CreditCard className="w-4 h-4 shrink-0" />
+                            <span>カード相談</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() =>
@@ -1015,7 +1046,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
               {editingRecordId && (
                 <button
                   type="button"
-                  onClick={resetRegisterForm}
+                  onClick={() => resetRegisterForm(false)}
                   className="text-base text-slate-600 underline"
                 >
                   新規登録に戻す
@@ -1247,10 +1278,14 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
 
             <button
               type="submit"
-              disabled={stores.length === 0 || !storeId}
+              disabled={isSavingRecord || stores.length === 0 || !storeId}
               className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow text-base transition-colors"
             >
-              {editingRecordId ? '更新を保存する' : 'この価格を登録する'}
+              {isSavingRecord
+                ? '保存中...'
+                : editingRecordId
+                ? '更新を保存する'
+                : 'この価格を登録する'}
             </button>
           </form>
         )}

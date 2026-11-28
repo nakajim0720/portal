@@ -9,12 +9,14 @@ import {
   Trash2,
   Plus,
   RotateCcw,
+  Search,
   X,
 } from 'lucide-react';
 import type {
   PortalCategory,
   PortalItem,
   PortalItemStatus,
+  PortalRepeatRule,
   PortalTabId,
   PortalUserProfile,
 } from './types';
@@ -28,6 +30,7 @@ interface PendingAddDraft {
   dueDate: string;
   category: PortalCategory;
   assignee: string;
+  repeatRule: PortalRepeatRule;
 }
 
 interface PortalFeatureAppProps {
@@ -41,6 +44,7 @@ interface PortalFeatureAppProps {
     dueDate: string;
     category: PortalCategory;
     assignee: string;
+    repeatRule?: PortalRepeatRule;
   }) => Promise<void>;
   updateItem: (
     itemId: string,
@@ -49,6 +53,7 @@ interface PortalFeatureAppProps {
       dueDate: string;
       category: PortalCategory;
       assignee: string;
+      repeatRule?: PortalRepeatRule;
     }
   ) => Promise<void>;
   updateItemStatus: (itemId: string, nextStatus: PortalItemStatus) => Promise<void>;
@@ -97,6 +102,21 @@ function getCategoryLabel(category: PortalCategory): string {
   }
 }
 
+function getRepeatBadgeLabel(rule: PortalRepeatRule | undefined): string {
+  switch (rule) {
+    case 'weekly':
+      return '🔁 毎週';
+    case 'monthly':
+      return '🔁 毎月';
+    case 'yearly':
+      return '🔁 毎年';
+    case 'anniversary':
+      return '🎉 記念日';
+    default:
+      return '';
+  }
+}
+
 function getFallbackNameFromEmail(email: string): string {
   const local = email.split('@')[0]?.trim();
   return local || 'メンバー';
@@ -140,12 +160,14 @@ export function PortalFeatureApp({
   const [activeTab, setActiveTab] = useState<PortalTabId>('home');
   const [selectedDetailItemId, setSelectedDetailItemId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string>('');
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
 
   // 新規追加フォーム状態
   const [title, setTitle] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
   const [category, setCategory] = useState<PortalCategory>('shared');
   const [assignee, setAssignee] = useState<string>(SHARED_ASSIGNEE_KEY);
+  const [repeatRule, setRepeatRule] = useState<PortalRepeatRule>('none');
   const [pendingDraft, setPendingDraft] = useState<PendingAddDraft | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -226,12 +248,17 @@ export function PortalFeatureApp({
     if (!trimmed || !isAccessVerified || isAccessRejected) {
       return;
     }
+    if (repeatRule === 'anniversary' && !dueDate) {
+      setFormError('記念日は予定日時（日付）を設定してください。');
+      return;
+    }
     setFormError('');
     setPendingDraft({
       title: trimmed,
       dueDate,
       category,
       assignee,
+      repeatRule,
     });
   };
 
@@ -247,9 +274,9 @@ export function PortalFeatureApp({
         dueDate: draft.dueDate,
         category: draft.category,
         assignee: draft.assignee,
+        repeatRule: draft.repeatRule,
       });
 
-      // LINE通知（B-1: 新規追加は任意）
       const dueText = draft.dueDate ? `\n予定日時: ${formatDateTimeJst(draft.dueDate)}` : '';
       void sendLineNotification({
         trigger: 'portalItemAdded',
@@ -262,6 +289,7 @@ export function PortalFeatureApp({
 
       setTitle('');
       setDueDate('');
+      setRepeatRule('none');
       setPendingDraft(null);
     } catch (err) {
       console.error(err);
@@ -275,7 +303,6 @@ export function PortalFeatureApp({
   const handleCompleteItem = async (item: PortalItem) => {
     await updateItemStatus(item.id, 1);
 
-    // LINE通知（B-2: タスク完了は任意）
     void sendLineNotification({
       trigger: 'portalItemCompleted',
       appName: 'ふたりのポータル',
@@ -286,6 +313,13 @@ export function PortalFeatureApp({
     });
   };
 
+  const normalizedQuery = searchKeyword.trim().toLowerCase();
+  const matchesKeyword = (item: PortalItem): boolean => {
+    if (!normalizedQuery) return true;
+    return item.title.toLowerCase().includes(normalizedQuery);
+  };
+
+  // 通常タスク一覧（記念日は常駐させない。キーワード検索時のみヒットさせる）
   const visibleActiveItems = items.filter((item) => {
     if (item.status !== 0) {
       return false;
@@ -293,21 +327,30 @@ export function PortalFeatureApp({
     if (item.displayScope === 'private' && item.createdBy && item.createdBy !== currentEmail) {
       return false;
     }
-    return true;
+    if (item.repeatRule === 'anniversary' && !normalizedQuery) {
+      return false;
+    }
+    return matchesKeyword(item);
   });
 
   const todayKey = getTodayJstDateKey();
   const todayTasks = visibleActiveItems.filter(
-    (item) => item.category === 'shared' && (!item.dueDate || getJstDateKey(item.dueDate) <= todayKey)
+    (item) =>
+      item.repeatRule !== 'anniversary' &&
+      item.category === 'shared' &&
+      (!item.dueDate || getJstDateKey(item.dueDate) <= todayKey)
   );
   const upcomingEvents = visibleActiveItems.filter(
-    (item) => item.category === 'dateideas' || Boolean(item.dueDate)
+    (item) =>
+      item.repeatRule !== 'anniversary' &&
+      (item.category === 'dateideas' || Boolean(item.dueDate))
   );
 
   const renderItemRow = (item: PortalItem, mode: 'active' | 'completed' | 'trash') => {
     const creatorName = resolveMemberName(usersMap, item.createdBy, currentEmail);
     const assigneeText = formatAssigneeLabel(item.assignee, item.createdBy);
     const isShared = isSharedAssigneeValue(item.assignee);
+    const repeatBadge = getRepeatBadgeLabel(item.repeatRule);
 
     return (
       <li
@@ -316,7 +359,7 @@ export function PortalFeatureApp({
       >
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            {mode === 'active' && (
+            {mode === 'active' && item.repeatRule !== 'anniversary' && (
               <button
                 type="button"
                 onClick={() => handleCompleteItem(item)}
@@ -345,6 +388,11 @@ export function PortalFeatureApp({
             >
               担当: {assigneeText}
             </span>
+            {repeatBadge && (
+              <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 font-semibold">
+                {repeatBadge}
+              </span>
+            )}
             {item.dueDate && (
               <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 font-semibold">
                 {formatDateTimeJst(item.dueDate)}
@@ -447,6 +495,30 @@ export function PortalFeatureApp({
           </div>
         )}
 
+        {/* カレンダー以外のタブでキーワード検索バーを表示 */}
+        {activeTab !== 'calendar' && (
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="キーワードで予定・メモ・記念日を検索..."
+              className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            />
+            {searchKeyword && (
+              <button
+                type="button"
+                onClick={() => setSearchKeyword('')}
+                aria-label="検索をクリア"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+
         {activeTab === 'home' && (
           <div className="space-y-5 min-w-0">
             {/* 新規アイテム追加カード */}
@@ -454,7 +526,7 @@ export function PortalFeatureApp({
               <h2 className="text-base font-bold text-slate-900">新規アイテムを追加</h2>
               <form
                 onSubmit={handleOpenConfirm}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 min-w-0"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 min-w-0"
               >
                 <input
                   type="text"
@@ -467,14 +539,14 @@ export function PortalFeatureApp({
                 <div className="relative w-full min-w-0 max-w-full h-[46px] rounded-xl border border-slate-300 bg-white flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-pink-500">
                   {!dueDate && (
                     <span className="pointer-events-none absolute left-3 text-base text-slate-400">
-                      予定日時（任意）
+                      {repeatRule === 'anniversary' ? '記念日の日付（必須）' : '予定日時（任意）'}
                     </span>
                   )}
                   <input
                     type="datetime-local"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    aria-label="予定日時（任意）"
+                    aria-label="予定日時"
                     className={`appearance-none block box-border w-full min-w-0 max-w-full h-full px-3 bg-transparent border-0 text-base text-left focus:outline-none ${
                       dueDate ? 'text-slate-900' : 'text-transparent'
                     }`}
@@ -488,6 +560,18 @@ export function PortalFeatureApp({
                   <option value="shopping">お買い物</option>
                   <option value="dateideas">デート</option>
                   <option value="shared">共有・家事など</option>
+                </select>
+                <select
+                  value={repeatRule}
+                  onChange={(e) => setRepeatRule(e.target.value as PortalRepeatRule)}
+                  aria-label="繰り返し・記念日"
+                  className="block box-border w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-pink-500"
+                >
+                  <option value="none">繰り返しなし</option>
+                  <option value="weekly">毎週</option>
+                  <option value="monthly">毎月</option>
+                  <option value="yearly">毎年（予定）</option>
+                  <option value="anniversary">記念日（カレンダーのみ）</option>
                 </select>
                 <div className="flex flex-col sm:flex-row gap-2 min-w-0 lg:col-span-1">
                   <select
@@ -577,7 +661,8 @@ export function PortalFeatureApp({
             {items.filter(
               (item) =>
                 item.status === 1 &&
-                (item.displayScope !== 'private' || item.createdBy === currentEmail)
+                (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
+                matchesKeyword(item)
             ).length === 0 ? (
               <p className="text-sm text-slate-500 py-4">完了したアイテムはありません。</p>
             ) : (
@@ -586,7 +671,8 @@ export function PortalFeatureApp({
                   .filter(
                     (item) =>
                       item.status === 1 &&
-                      (item.displayScope !== 'private' || item.createdBy === currentEmail)
+                      (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
+                      matchesKeyword(item)
                   )
                   .map((item) => renderItemRow(item, 'completed'))}
               </ul>
@@ -603,7 +689,8 @@ export function PortalFeatureApp({
             {items.filter(
               (item) =>
                 item.status === 2 &&
-                (item.displayScope !== 'private' || item.createdBy === currentEmail)
+                (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
+                matchesKeyword(item)
             ).length === 0 ? (
               <p className="text-sm text-slate-500 py-4">ゴミ箱は空です。</p>
             ) : (
@@ -612,7 +699,8 @@ export function PortalFeatureApp({
                   .filter(
                     (item) =>
                       item.status === 2 &&
-                      (item.displayScope !== 'private' || item.createdBy === currentEmail)
+                      (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
+                      matchesKeyword(item)
                   )
                   .map((item) => renderItemRow(item, 'trash'))}
               </ul>
@@ -677,6 +765,12 @@ export function PortalFeatureApp({
                 <dt className="text-slate-500 shrink-0">カテゴリ</dt>
                 <dd className="font-medium text-slate-900 text-right">
                   {getCategoryLabel(pendingDraft.category)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500 shrink-0">繰り返し</dt>
+                <dd className="font-medium text-slate-900 text-right">
+                  {getRepeatBadgeLabel(pendingDraft.repeatRule) || 'なし'}
                 </dd>
               </div>
               <div className="flex justify-between gap-3">

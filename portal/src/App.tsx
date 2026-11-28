@@ -61,6 +61,24 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
+  // 価格比較 → カード承認へのワンタップ連携
+  const handleConsultCardApproval = useCallback(
+    (payload: { name: string; price?: string; url?: string }) => {
+      const params = new URLSearchParams();
+      if (payload.name.trim()) params.set('name', payload.name.trim());
+      if (payload.price?.trim()) params.set('price', payload.price.trim());
+      if (payload.url?.trim()) params.set('url', payload.url.trim());
+
+      const nextHash = featureToHash('card');
+      const queryStr = params.toString();
+      const nextUrl = `${window.location.pathname}${queryStr ? `?${queryStr}` : ''}${nextHash}`;
+      window.history.replaceState(null, '', nextUrl);
+      setActiveFeature('card');
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    },
+    []
+  );
+
   const currentEmail = authUser?.email || '';
   const {
     usersMap,
@@ -264,6 +282,7 @@ export default function App() {
             user={authUser}
             displayName={resolvedDisplayName}
             onUnauthorized={handleUnauthorizedFromFeature}
+            onConsultCardApproval={handleConsultCardApproval}
           />
         </ErrorBoundary>
       )}

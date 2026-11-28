@@ -13,13 +13,64 @@ import type {
   PortalCategory,
   PortalItem,
   PortalItemStatus,
+  PortalRepeatRule,
   PortalUserProfile,
 } from './types';
-import { getNowJstIso } from './dateJst';
+import { getNowJstIso, getTodayJstDateKey } from './dateJst';
 
 const USERS_COLLECTION = 'portal_users';
 const ITEMS_COLLECTION = 'portal_items';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function normalizeRepeatRule(raw: unknown): PortalRepeatRule {
+  if (
+    raw === 'weekly' ||
+    raw === 'monthly' ||
+    raw === 'yearly' ||
+    raw === 'anniversary'
+  ) {
+    return raw;
+  }
+  return 'none';
+}
+
+function calculateNextDueDate(currentDueDate: string, rule: PortalRepeatRule): string {
+  if (rule === 'none' || rule === 'anniversary') return '';
+
+  let year: number;
+  let month: number;
+  let day: number;
+  let timeSuffix = '';
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2})?/.exec(currentDueDate.trim());
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]) - 1;
+    day = Number(match[3]);
+    timeSuffix = match[4] || '';
+  } else {
+    const todayKey = getTodayJstDateKey();
+    const [y, m, d] = todayKey.split('-').map(Number);
+    year = y;
+    month = m - 1;
+    day = d;
+    timeSuffix = '';
+  }
+
+  const baseDate = new Date(year, month, day);
+  if (rule === 'weekly') {
+    baseDate.setDate(baseDate.getDate() + 7);
+  } else if (rule === 'monthly') {
+    baseDate.setMonth(baseDate.getMonth() + 1);
+  } else if (rule === 'yearly') {
+    baseDate.setFullYear(baseDate.getFullYear() + 1);
+  }
+
+  const nextY = baseDate.getFullYear();
+  const nextM = String(baseDate.getMonth() + 1).padStart(2, '0');
+  const nextD = String(baseDate.getDate()).padStart(2, '0');
+  return `${nextY}-${nextM}-${nextD}${timeSuffix}`;
+}
 
 export function usePortalData(userEmail: string | null | undefined) {
   const [usersMap, setUsersMap] = useState<Record<string, PortalUserProfile>>({});
@@ -123,6 +174,7 @@ export function usePortalData(userEmail: string | null | undefined) {
             assignee: raw.assignee || 'ふたり共有',
             displayScope: raw.displayScope === 'private' ? 'private' : 'shared',
             dueDate: raw.dueDate || '',
+            repeatRule: normalizeRepeatRule(raw.repeatRule),
             status: (raw.status === 1 || raw.status === 2 ? raw.status : 0) as PortalItemStatus,
             createdBy: raw.createdBy || '',
             createdAt: raw.createdAt || '',
@@ -189,6 +241,7 @@ export function usePortalData(userEmail: string | null | undefined) {
       dueDate: string;
       category: PortalCategory;
       assignee: string;
+      repeatRule?: PortalRepeatRule;
     }) => {
       if (!userEmail || !isAccessVerified || isAccessRejected) {
         return;
@@ -200,6 +253,7 @@ export function usePortalData(userEmail: string | null | undefined) {
         assignee: params.assignee,
         displayScope,
         dueDate: params.dueDate,
+        repeatRule: normalizeRepeatRule(params.repeatRule),
         status: 0,
         createdBy: userEmail,
         createdAt: getNowJstIso(),
@@ -217,6 +271,7 @@ export function usePortalData(userEmail: string | null | undefined) {
         dueDate: string;
         category: PortalCategory;
         assignee: string;
+        repeatRule?: PortalRepeatRule;
       }
     ) => {
       if (!isAccessVerified || isAccessRejected) {
@@ -229,6 +284,7 @@ export function usePortalData(userEmail: string | null | undefined) {
         category: params.category,
         assignee: params.assignee,
         displayScope,
+        repeatRule: normalizeRepeatRule(params.repeatRule),
       });
     },
     [isAccessVerified, isAccessRejected]
@@ -239,13 +295,39 @@ export function usePortalData(userEmail: string | null | undefined) {
       if (!isAccessVerified || isAccessRejected) {
         return;
       }
+      const targetItem = items.find((i) => i.id === itemId);
+
       const updatePayload: { status: PortalItemStatus; trashedAt: string | null } = {
         status: nextStatus,
         trashedAt: nextStatus === 2 ? getNowJstIso() : null,
       };
       await updateDoc(doc(db, ITEMS_COLLECTION, itemId), updatePayload);
+
+      // 毎週・毎月・毎年の繰り返しタスクを完了にした場合、次回分を自動生成
+      if (
+        nextStatus === 1 &&
+        targetItem &&
+        targetItem.status === 0 &&
+        (targetItem.repeatRule === 'weekly' ||
+          targetItem.repeatRule === 'monthly' ||
+          targetItem.repeatRule === 'yearly')
+      ) {
+        const nextDueDate = calculateNextDueDate(targetItem.dueDate, targetItem.repeatRule);
+        await addDoc(collection(db, ITEMS_COLLECTION), {
+          title: targetItem.title,
+          category: targetItem.category,
+          assignee: targetItem.assignee,
+          displayScope: targetItem.displayScope,
+          dueDate: nextDueDate,
+          repeatRule: targetItem.repeatRule,
+          status: 0,
+          createdBy: userEmail || targetItem.createdBy,
+          createdAt: getNowJstIso(),
+          trashedAt: null,
+        });
+      }
     },
-    [isAccessVerified, isAccessRejected]
+    [isAccessVerified, isAccessRejected, items, userEmail]
   );
 
   const deleteItemPermanently = useCallback(

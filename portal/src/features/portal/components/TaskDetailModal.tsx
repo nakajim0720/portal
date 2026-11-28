@@ -1,6 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Bell, Pencil, X } from 'lucide-react';
-import type { PortalCategory, PortalItem, PortalUserProfile } from '../types';
+import type {
+  PortalCategory,
+  PortalItem,
+  PortalRepeatRule,
+  PortalUserProfile,
+} from '../types';
 import { formatDateTimeJst } from '../dateJst';
 import { sendLineNotification } from '../../../shared/utils/lineNotify';
 
@@ -15,6 +20,7 @@ interface TaskDetailModalProps {
       dueDate: string;
       category: PortalCategory;
       assignee: string;
+      repeatRule?: PortalRepeatRule;
     }
   ) => Promise<void>;
   onClose: () => void;
@@ -33,6 +39,21 @@ function getCategoryLabel(category: PortalCategory): string {
     case 'shared':
     default:
       return '共有タスク・家事';
+  }
+}
+
+function getRepeatLabel(rule: PortalRepeatRule | undefined): string {
+  switch (rule) {
+    case 'weekly':
+      return '毎週（完了で次回自動作成）';
+    case 'monthly':
+      return '毎月（完了で次回自動作成）';
+    case 'yearly':
+      return '毎年（完了で来年分を自動作成）';
+    case 'anniversary':
+      return '記念日（毎年カレンダーのみ表示）';
+    default:
+      return 'なし';
   }
 }
 
@@ -61,7 +82,11 @@ function resolveMemberName(
   return 'メンバー';
 }
 
-function normalizeAssigneeForSelect(assignee: string | undefined, createdBy: string, currentEmail: string): string {
+function normalizeAssigneeForSelect(
+  assignee: string | undefined,
+  createdBy: string,
+  currentEmail: string
+): string {
   if (!assignee || assignee === SHARED_ASSIGNEE_KEY || assignee === 'ふたり共有') {
     return SHARED_ASSIGNEE_KEY;
   }
@@ -106,6 +131,7 @@ export function TaskDetailModal({
   const [dueDate, setDueDate] = useState<string>('');
   const [category, setCategory] = useState<PortalCategory>('shared');
   const [assignee, setAssignee] = useState<string>(SHARED_ASSIGNEE_KEY);
+  const [repeatRule, setRepeatRule] = useState<PortalRepeatRule>('none');
   const [notifyLine, setNotifyLine] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -120,6 +146,7 @@ export function TaskDetailModal({
     setDueDate(item.dueDate || '');
     setCategory(item.category);
     setAssignee(normalizeAssigneeForSelect(item.assignee, item.createdBy, currentEmail));
+    setRepeatRule(item.repeatRule || 'none');
     setNotifyLine(false);
     setErrorMsg('');
   }, [item?.id, currentEmail]);
@@ -159,6 +186,7 @@ export function TaskDetailModal({
     setDueDate(item.dueDate || '');
     setCategory(item.category);
     setAssignee(normalizeAssigneeForSelect(item.assignee, item.createdBy, currentEmail));
+    setRepeatRule(item.repeatRule || 'none');
     setNotifyLine(false);
     setErrorMsg('');
     setIsEditing(true);
@@ -171,6 +199,10 @@ export function TaskDetailModal({
       setErrorMsg('内容を入力してください。');
       return;
     }
+    if (repeatRule === 'anniversary' && !dueDate) {
+      setErrorMsg('記念日は予定日時（日付）を設定してください。');
+      return;
+    }
 
     setIsSaving(true);
     setErrorMsg('');
@@ -180,6 +212,7 @@ export function TaskDetailModal({
         dueDate,
         category,
         assignee,
+        repeatRule,
       });
 
       if (notifyLine) {
@@ -249,13 +282,22 @@ export function TaskDetailModal({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-bold text-slate-700">予定日時</label>
-              <div className="w-full min-w-0 max-w-full overflow-hidden rounded-xl">
+              <label className="block text-sm font-bold text-slate-700">
+                予定日時 {repeatRule === 'anniversary' && <span className="text-rose-600">*</span>}
+              </label>
+              <div className="relative w-full min-w-0 max-w-full h-[46px] rounded-xl border border-slate-300 bg-white flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-pink-500">
+                {!dueDate && (
+                  <span className="pointer-events-none absolute left-3 text-base text-slate-400">
+                    予定日時（任意）
+                  </span>
+                )}
                 <input
                   type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="block box-border w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className={`appearance-none block box-border w-full min-w-0 max-w-full h-full px-3 bg-transparent border-0 text-base text-left focus:outline-none ${
+                    dueDate ? 'text-slate-900' : 'text-transparent'
+                  }`}
                 />
               </div>
             </div>
@@ -289,6 +331,21 @@ export function TaskDetailModal({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-bold text-slate-700">繰り返し・記念日</label>
+              <select
+                value={repeatRule}
+                onChange={(e) => setRepeatRule(e.target.value as PortalRepeatRule)}
+                className="block box-border w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="none">繰り返しなし</option>
+                <option value="weekly">毎週（完了で次回を自動作成）</option>
+                <option value="monthly">毎月（完了で次回を自動作成）</option>
+                <option value="yearly">毎年（完了で来年分を自動作成）</option>
+                <option value="anniversary">記念日（毎年カレンダーのみ表示）</option>
+              </select>
             </div>
 
             <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
@@ -335,6 +392,12 @@ export function TaskDetailModal({
                 <dt className="text-slate-500">予定日時</dt>
                 <dd className="font-medium text-rose-700 text-right">
                   {item.dueDate ? formatDateTimeJst(item.dueDate) : '未設定'}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-slate-500">繰り返し</dt>
+                <dd className="font-medium text-slate-900 text-right">
+                  {getRepeatLabel(item.repeatRule)}
                 </dd>
               </div>
               <div className="flex justify-between gap-2">
