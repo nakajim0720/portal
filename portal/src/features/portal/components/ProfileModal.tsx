@@ -3,7 +3,7 @@ import { Calendar, RefreshCw, X } from 'lucide-react';
 import type { PortalUserProfile } from '../types';
 import { compressImageToBase64 } from '../imageUtils';
 
-const APP_VERSION = 'v1.0.2'; // アプリのバージョンをここで管理
+const APP_VERSION = 'v1.0.3'; // アプリのバージョンをここで管理
 
 interface ProfileModalProps {
   isOpen: boolean;

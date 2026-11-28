@@ -313,6 +313,10 @@ export function PortalFeatureApp({
     });
   };
 
+  const handleMoveToTrash = async (itemId: string) => {
+    await updateItemStatus(itemId, 2);
+  };
+
   const normalizedQuery = searchKeyword.trim().toLowerCase();
   const matchesKeyword = (item: PortalItem): boolean => {
     if (!normalizedQuery) return true;
@@ -631,6 +635,7 @@ export function PortalFeatureApp({
             usersMap={usersMap}
             currentEmail={currentEmail}
             onUpdateItem={updateItem}
+            onMoveToTrash={handleMoveToTrash}
           />
         )}
 
@@ -808,6 +813,7 @@ export function PortalFeatureApp({
         usersMap={usersMap}
         currentEmail={currentEmail}
         onUpdateItem={updateItem}
+        onMoveToTrash={handleMoveToTrash}
         onClose={() => setSelectedDetailItemId(null)}
       />
     </div>

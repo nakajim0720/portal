@@ -28,6 +28,7 @@ interface CalendarViewProps {
       repeatRule?: PortalRepeatRule;
     }
   ) => Promise<void>;
+  onMoveToTrash: (itemId: string) => Promise<void>;
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -95,6 +96,7 @@ export function CalendarView({
   usersMap,
   currentEmail,
   onUpdateItem,
+  onMoveToTrash,
 }: CalendarViewProps) {
   const [monthCursor, setMonthCursor] = useState<Date>(() => new Date());
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -465,7 +467,7 @@ export function CalendarView({
                               🎉 {item.title}
                               {years !== null ? `（${years}周年）` : ''}
                             </p>
-                            <p className="text-xs text-purple-800">タップして詳細・編集</p>
+                            <p className="text-xs text-purple-800">タップして詳細・編集・削除</p>
                           </div>
                           <span className="text-xs font-semibold text-purple-900 shrink-0">
                             詳細
@@ -509,7 +511,7 @@ export function CalendarView({
                             {timePart && (
                               <p className="text-xs text-rose-700 font-medium">{timePart}</p>
                             )}
-                            <p className="text-xs text-pink-700">タップして詳細・編集</p>
+                            <p className="text-xs text-pink-700">タップして詳細・編集・削除</p>
                           </div>
                           <span className="text-xs font-semibold text-pink-700 shrink-0">詳細</span>
                         </button>
@@ -533,12 +535,13 @@ export function CalendarView({
         </div>
       )}
 
-      {/* 予定詳細・編集モーダル */}
+      {/* 予定詳細・編集・削除モーダル */}
       <TaskDetailModal
         item={selectedDetailItem}
         usersMap={usersMap}
         currentEmail={currentEmail}
         onUpdateItem={onUpdateItem}
+        onMoveToTrash={onMoveToTrash}
         onClose={closeAllModals}
         onBackToList={selectedDateKey ? backToDayList : undefined}
         backButtonLabel="その日の一覧に戻る"
