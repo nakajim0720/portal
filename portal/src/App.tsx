@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, googleProvider, signInWithPopup, signOut } from './firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import {
   featureToHash,
   parseFeatureFromHash,
@@ -23,10 +24,11 @@ export default function App() {
   const [activeFeature, setActiveFeature] = useState<FeatureId>(() =>
     parseFeatureFromHash(window.location.hash)
   );
+  const [kaimonoSearchKeyword, setKaimonoSearchKeyword] = useState<string>('');
+  const [cardPendingCount, setCardPendingCount] = useState<number>(0);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
 
-  // Firebase 認証状態の監視
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
       auth,
@@ -43,7 +45,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // URLハッシュ変更の監視（ブラウザ戻る・進む対応）
   useEffect(() => {
     const handleHashChange = () => {
       setActiveFeature(parseFeatureFromHash(window.location.hash));
@@ -61,7 +62,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
-  // 価格比較 → カード承認へのワンタップ連携
   const handleConsultCardApproval = useCallback(
     (payload: { name: string; price?: string; url?: string }) => {
       const params = new URLSearchParams();
@@ -79,6 +79,16 @@ export default function App() {
     []
   );
 
+  const handleSearchInKaimono = useCallback((keyword: string) => {
+    setKaimonoSearchKeyword(keyword);
+    setActiveFeature('kaimono');
+    const nextHash = featureToHash('kaimono');
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
+
   const currentEmail = authUser?.email || '';
   const {
     usersMap,
@@ -92,9 +102,35 @@ export default function App() {
     updateItem,
     updateItemStatus,
     deleteItemPermanently,
+    emptyTrash,
+    exportAllDataAsJson,
   } = usePortalData(authUser ? currentEmail : null);
 
-  // アクセス拒否または権限エラー時は即座にサインアウト
+  // 上部共通バー用のカード承認待ち件数を購読
+  useEffect(() => {
+    if (!authUser || !isAccessVerified || isAccessRejected) {
+      setCardPendingCount(0);
+      return;
+    }
+    const unsubCard = onSnapshot(
+      collection(db, 'card_items'),
+      (snap) => {
+        let count = 0;
+        snap.forEach((docSnap) => {
+          const raw = docSnap.data() as { status?: string; proposerUid?: string };
+          if (raw.status === 'pending' && raw.proposerUid !== authUser.uid) {
+            count += 1;
+          }
+        });
+        setCardPendingCount(count);
+      },
+      (err) => {
+        console.warn('Card count subscription skipped:', err);
+      }
+    );
+    return () => unsubCard();
+  }, [authUser, isAccessVerified, isAccessRejected]);
+
   useEffect(() => {
     if (!authUser || !isAccessRejected) {
       return;
@@ -247,6 +283,7 @@ export default function App() {
         activeFeature={activeFeature}
         onSelectFeature={handleSelectFeature}
         currentProfile={currentProfile}
+        cardPendingCount={cardPendingCount}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenNotificationSettings={() => setIsNotificationModalOpen(true)}
         onLogout={handleLogout}
@@ -272,6 +309,8 @@ export default function App() {
             updateItem={updateItem}
             updateItemStatus={updateItemStatus}
             deleteItemPermanently={deleteItemPermanently}
+            emptyTrash={emptyTrash}
+            onSearchInKaimono={handleSearchInKaimono}
           />
         </ErrorBoundary>
       )}
@@ -283,6 +322,7 @@ export default function App() {
             displayName={resolvedDisplayName}
             onUnauthorized={handleUnauthorizedFromFeature}
             onConsultCardApproval={handleConsultCardApproval}
+            initialSearchQuery={kaimonoSearchKeyword}
           />
         </ErrorBoundary>
       )}
@@ -304,6 +344,7 @@ export default function App() {
         profile={currentProfile}
         onClose={() => setIsProfileModalOpen(false)}
         onSave={saveProfile}
+        onExportJson={exportAllDataAsJson}
       />
 
       <NotificationSettingsModal

@@ -6,6 +6,7 @@ interface GlobalAppBarProps {
   activeFeature: FeatureId;
   onSelectFeature: (feature: FeatureId) => void;
   currentProfile: PortalUserProfile | undefined;
+  cardPendingCount?: number;
   onOpenProfile: () => void;
   onOpenNotificationSettings: () => void;
   onLogout: () => void;
@@ -32,6 +33,7 @@ export function GlobalAppBar({
   activeFeature,
   onSelectFeature,
   currentProfile,
+  cardPendingCount = 0,
   onOpenProfile,
   onOpenNotificationSettings,
   onLogout,
@@ -101,6 +103,7 @@ export function GlobalAppBar({
         >
           {FEATURE_TABS.map((tab) => {
             const isActive = activeFeature === tab.id;
+            const showCardBadge = tab.id === 'card' && cardPendingCount > 0;
             return (
               <button
                 key={tab.id}
@@ -114,6 +117,11 @@ export function GlobalAppBar({
               >
                 {getFeatureIcon(tab.id)}
                 <span className="truncate">{tab.label}</span>
+                {showCardBadge && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-pink-600 text-white text-[10px] leading-none font-bold shrink-0">
+                    {cardPendingCount}
+                  </span>
+                )}
               </button>
             );
           })}

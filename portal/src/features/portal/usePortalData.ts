@@ -6,7 +6,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDocs,
   onSnapshot,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type {
@@ -303,7 +305,6 @@ export function usePortalData(userEmail: string | null | undefined) {
       };
       await updateDoc(doc(db, ITEMS_COLLECTION, itemId), updatePayload);
 
-      // 毎週・毎月・毎年の繰り返しタスクを完了にした場合、次回分を自動生成
       if (
         nextStatus === 1 &&
         targetItem &&
@@ -340,6 +341,71 @@ export function usePortalData(userEmail: string | null | undefined) {
     [isAccessVerified, isAccessRejected]
   );
 
+  const emptyTrash = useCallback(
+    async (targetItems: PortalItem[]) => {
+      if (!isAccessVerified || isAccessRejected || targetItems.length === 0) {
+        return;
+      }
+      const batch = writeBatch(db);
+      targetItems.forEach((item) => {
+        batch.delete(doc(db, ITEMS_COLLECTION, item.id));
+      });
+      await batch.commit();
+    },
+    [isAccessVerified, isAccessRejected]
+  );
+
+  const exportAllDataAsJson = useCallback(async () => {
+    if (!isAccessVerified || isAccessRejected) {
+      return;
+    }
+    const collectionNames = [
+      'portal_users',
+      'portal_items',
+      'price_stores',
+      'price_records',
+      'card_items',
+      'card_settings',
+    ];
+    const backupPayload: Record<string, Array<Record<string, unknown>>> = {};
+
+    for (const colName of collectionNames) {
+      try {
+        const snap = await getDocs(collection(db, colName));
+        backupPayload[colName] = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+      } catch (err) {
+        console.warn(`Backup skipped for ${colName}:`, err);
+        backupPayload[colName] = [];
+      }
+    }
+
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            exportedAt: getNowJstIso(),
+            collections: backupPayload,
+          },
+          null,
+          2
+        ),
+      ],
+      { type: 'application/json' }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStamp = getTodayJstDateKey().replace(/-/g, '');
+    a.href = url;
+    a.download = `portal-backup-${dateStamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [isAccessVerified, isAccessRejected]);
+
   return {
     usersMap,
     items,
@@ -352,5 +418,7 @@ export function usePortalData(userEmail: string | null | undefined) {
     updateItem,
     updateItemStatus,
     deleteItemPermanently,
+    emptyTrash,
+    exportAllDataAsJson,
   };
 }

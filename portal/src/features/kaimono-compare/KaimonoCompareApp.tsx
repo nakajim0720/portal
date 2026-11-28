@@ -70,6 +70,7 @@ interface KaimonoCompareAppProps {
     price?: string;
     url?: string;
   }) => void;
+  initialSearchQuery?: string;
 }
 
 const MIGRATION_DONE_KEY = 'kaimono_migrated_to_price_prefix_v1';
@@ -98,6 +99,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
   displayName,
   onUnauthorized,
   onConsultCardApproval,
+  initialSearchQuery = '',
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('compare');
   const [scannerTarget, setScannerTarget] = useState<'search' | 'form' | null>(null);
@@ -126,7 +128,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
   const [isSavingRecord, setIsSavingRecord] = useState<boolean>(false);
 
   // 検索ステート
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery);
 
   // 店舗管理フォームステート
   const [editingStoreId, setEditingStoreId] = useState<string | null>(null);
@@ -145,7 +147,14 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     user.email?.split('@')[0] ||
     'メンバー';
 
-  // URLクエリパラメータ連携（?name=...&price=...&jan=...&url=...&memo=...）
+  useEffect(() => {
+    if (initialSearchQuery) {
+      setSearchQuery(initialSearchQuery);
+      setActiveTab('compare');
+    }
+  }, [initialSearchQuery]);
+
+  // URLクエリパラメータ連携
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const qName = params.get('name');
@@ -282,7 +291,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     };
   }, [user.email]);
 
-  // price_stores, price_records, および portal_items（お買い物）のリアルタイム購読
   useEffect(() => {
     const handleSnapshotError = (error: FirestoreError) => {
       if (error.code === 'permission-denied') {
@@ -684,7 +692,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           </div>
         )}
 
-        {/* ==================== 1. 検索・比較タブ ==================== */}
         {activeTab === 'compare' && (
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -1033,7 +1040,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           </div>
         )}
 
-        {/* ==================== 2. 価格登録タブ ==================== */}
         {activeTab === 'register' && (
           <form
             onSubmit={handleSaveRecord}
@@ -1290,7 +1296,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           </form>
         )}
 
-        {/* ==================== 3. 買い物リストタブ（ポータル「お買い物」と双方向同期） ==================== */}
         {activeTab === 'list' && (
           <div className="space-y-4">
             <form
@@ -1401,7 +1406,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           </div>
         )}
 
-        {/* ==================== 4. 店舗マスタ管理タブ ==================== */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
             <form

@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react';
 import {
   Home,
   Calendar,
@@ -10,6 +10,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  ExternalLink,
   X,
 } from 'lucide-react';
 import type {
@@ -58,9 +59,12 @@ interface PortalFeatureAppProps {
   ) => Promise<void>;
   updateItemStatus: (itemId: string, nextStatus: PortalItemStatus) => Promise<void>;
   deleteItemPermanently: (itemId: string) => Promise<void>;
+  emptyTrash?: (targetItems: PortalItem[]) => Promise<void>;
+  onSearchInKaimono?: (keyword: string) => void;
 }
 
 const SHARED_ASSIGNEE_KEY = 'shared';
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
 const NAV_TABS: Array<{ id: PortalTabId; label: string; shortLabel: string }> = [
   { id: 'home', label: 'ホーム', shortLabel: 'ホーム' },
@@ -71,6 +75,37 @@ const NAV_TABS: Array<{ id: PortalTabId; label: string; shortLabel: string }> = 
   { id: 'completed', label: '実行済み', shortLabel: '完了' },
   { id: 'trash', label: 'ゴミ箱', shortLabel: 'ゴミ箱' },
 ];
+
+function isSafeHttpUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function renderTextWithAutoLinks(text: string): ReactNode {
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, idx) => {
+    if (/^https?:\/\/[^\s]+$/.test(part) && isSafeHttpUrl(part)) {
+      return (
+        <a
+          key={`${idx}-${part}`}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-0.5 text-blue-700 hover:text-blue-800 underline underline-offset-2 break-all font-medium"
+        >
+          <span>{part}</span>
+          <ExternalLink className="w-3.5 h-3.5 inline shrink-0" />
+        </a>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
 
 function getTabIcon(tabId: PortalTabId) {
   switch (tabId) {
@@ -156,11 +191,14 @@ export function PortalFeatureApp({
   updateItem,
   updateItemStatus,
   deleteItemPermanently,
+  emptyTrash,
+  onSearchInKaimono,
 }: PortalFeatureAppProps) {
   const [activeTab, setActiveTab] = useState<PortalTabId>('home');
   const [selectedDetailItemId, setSelectedDetailItemId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string>('');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [isEmptyingTrash, setIsEmptyingTrash] = useState<boolean>(false);
 
   // 新規追加フォーム状態
   const [title, setTitle] = useState<string>('');
@@ -193,7 +231,6 @@ export function PortalFeatureApp({
     ? items.find((i) => i.id === selectedDetailItemId) ?? null
     : null;
 
-  // ふたり（user1 / user2）のアカウント一覧を動的に構築
   const memberEntries: Array<{ key: string; email: string; name: string }> = (() => {
     const emails: string[] = [];
     if (currentEmail) {
@@ -323,7 +360,6 @@ export function PortalFeatureApp({
     return item.title.toLowerCase().includes(normalizedQuery);
   };
 
-  // 通常タスク一覧（記念日は常駐させない。キーワード検索時のみヒットさせる）
   const visibleActiveItems = items.filter((item) => {
     if (item.status !== 0) {
       return false;
@@ -336,6 +372,26 @@ export function PortalFeatureApp({
     }
     return matchesKeyword(item);
   });
+
+  const trashItems = items.filter(
+    (item) =>
+      item.status === 2 &&
+      (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
+      matchesKeyword(item)
+  );
+
+  const handleEmptyTrash = async () => {
+    if (!emptyTrash || trashItems.length === 0 || isEmptyingTrash) return;
+    if (!window.confirm(`ゴミ箱の${trashItems.length}件をすべて完全に削除しますか？`)) {
+      return;
+    }
+    setIsEmptyingTrash(true);
+    try {
+      await emptyTrash(trashItems);
+    } finally {
+      setIsEmptyingTrash(false);
+    }
+  };
 
   const todayKey = getTodayJstDateKey();
   const todayTasks = visibleActiveItems.filter(
@@ -355,6 +411,7 @@ export function PortalFeatureApp({
     const assigneeText = formatAssigneeLabel(item.assignee, item.createdBy);
     const isShared = isSharedAssigneeValue(item.assignee);
     const repeatBadge = getRepeatBadgeLabel(item.repeatRule);
+    const cleanSearchName = item.title.replace(/（[^）]*）$/, '').trim() || item.title;
 
     return (
       <li
@@ -373,15 +430,14 @@ export function PortalFeatureApp({
                 <CheckCircle2 className="w-4 h-4 text-slate-300 hover:text-emerald-600" />
               </button>
             )}
-            <button
-              type="button"
+            <div
               onClick={() => setSelectedDetailItemId(item.id)}
-              className={`text-left font-medium break-words hover:underline ${
+              className={`text-left font-medium break-words cursor-pointer ${
                 mode === 'completed' ? 'line-through text-slate-400' : 'text-slate-900'
               }`}
             >
-              {item.title}
-            </button>
+              {renderTextWithAutoLinks(item.title)}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -407,6 +463,17 @@ export function PortalFeatureApp({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {mode === 'active' && item.category === 'shopping' && onSearchInKaimono && (
+            <button
+              type="button"
+              onClick={() => onSearchInKaimono(cleanSearchName)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>価格比較</span>
+            </button>
+          )}
+
           {mode === 'active' && (
             <button
               type="button"
@@ -687,28 +754,26 @@ export function PortalFeatureApp({
 
         {activeTab === 'trash' && (
           <section className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-2 min-w-0 overflow-hidden">
-            <h2 className="text-lg font-bold text-slate-900">ゴミ箱</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-bold text-slate-900">ゴミ箱</h2>
+              {trashItems.length > 0 && emptyTrash && (
+                <button
+                  type="button"
+                  disabled={isEmptyingTrash}
+                  onClick={handleEmptyTrash}
+                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-semibold shrink-0"
+                >
+                  {isEmptyingTrash ? '削除中...' : '空にする'}
+                </button>
+              )}
+            </div>
             <p className="text-xs text-slate-500 border-b border-slate-100 pb-2.5">
               ゴミ箱に入れたアイテムは7日経過すると自動で削除されます。
             </p>
-            {items.filter(
-              (item) =>
-                item.status === 2 &&
-                (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
-                matchesKeyword(item)
-            ).length === 0 ? (
+            {trashItems.length === 0 ? (
               <p className="text-sm text-slate-500 py-4">ゴミ箱は空です。</p>
             ) : (
-              <ul>
-                {items
-                  .filter(
-                    (item) =>
-                      item.status === 2 &&
-                      (item.displayScope !== 'private' || item.createdBy === currentEmail) &&
-                      matchesKeyword(item)
-                  )
-                  .map((item) => renderItemRow(item, 'trash'))}
-              </ul>
+              <ul>{trashItems.map((item) => renderItemRow(item, 'trash'))}</ul>
             )}
           </section>
         )}
