@@ -1,7 +1,9 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
-import { Calendar, X } from 'lucide-react';
+import { Calendar, RefreshCw, X } from 'lucide-react';
 import type { PortalUserProfile } from '../types';
 import { compressImageToBase64 } from '../imageUtils';
+
+const APP_VERSION = 'v1.0.0';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -29,6 +31,7 @@ export function ProfileModal({
   const [birthday, setBirthday] = useState<string>('');
   const [iconBase64, setIconBase64] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isReloading, setIsReloading] = useState<boolean>(false);
   const [errorText, setErrorText] = useState<string>('');
 
   useEffect(() => {
@@ -79,6 +82,25 @@ export function ProfileModal({
       setErrorText('プロフィールの保存に失敗しました。');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleForceReload = async () => {
+    if (isReloading) return;
+    setIsReloading(true);
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((reg) => reg.unregister()));
+      }
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+    } catch (err) {
+      console.warn('Cache clear skipped:', err);
+    } finally {
+      window.location.reload();
     }
   };
 
@@ -184,6 +206,19 @@ export function ProfileModal({
             )}
           </div>
         </form>
+
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-400">
+          <span>アプリバージョン: {APP_VERSION}</span>
+          <button
+            type="button"
+            disabled={isReloading}
+            onClick={handleForceReload}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-600 font-medium"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isReloading ? 'animate-spin' : ''}`} />
+            <span>{isReloading ? '更新中...' : '最新を読み込む'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
