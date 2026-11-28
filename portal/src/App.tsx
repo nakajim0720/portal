@@ -71,6 +71,7 @@ export default function App() {
     errorMessage,
     saveProfile,
     addItem,
+    updateItem,
     updateItemStatus,
     deleteItemPermanently,
   } = usePortalData(authUser ? currentEmail : null);
@@ -250,6 +251,7 @@ export default function App() {
             isAccessVerified={isAccessVerified}
             isAccessRejected={isAccessRejected}
             addItem={addItem}
+            updateItem={updateItem}
             updateItemStatus={updateItemStatus}
             deleteItemPermanently={deleteItemPermanently}
           />

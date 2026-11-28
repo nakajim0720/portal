@@ -70,7 +70,9 @@ export function usePortalData(userEmail: string | null | undefined) {
       setIsLoadingData(false);
       setIsAccessRejected(true);
       if (code === 'permission-denied') {
-        setErrorMessage('このGoogleアカウントにはアクセス権限がありません。登録済みのアカウントでログインしてください。');
+        setErrorMessage(
+          'このGoogleアカウントにはアクセス権限がありません。登録済みのアカウントでログインしてください。'
+        );
       } else {
         setErrorMessage(message);
       }
@@ -98,7 +100,10 @@ export function usePortalData(userEmail: string | null | undefined) {
         checkVerified();
       },
       (err) => {
-        rejectAccess(err, 'ユーザー情報の取得に失敗しました（アクセス権限またはDB設定をご確認ください）。');
+        rejectAccess(
+          err,
+          'ユーザー情報の取得に失敗しました（アクセス権限またはDB設定をご確認ください）。'
+        );
       }
     );
 
@@ -130,7 +135,10 @@ export function usePortalData(userEmail: string | null | undefined) {
         checkVerified();
       },
       (err) => {
-        rejectAccess(err, 'アイテム一覧の取得に失敗しました（アクセス権限またはDB設定をご確認ください）。');
+        rejectAccess(
+          err,
+          'アイテム一覧の取得に失敗しました（アクセス権限またはDB設定をご確認ください）。'
+        );
       }
     );
 
@@ -201,6 +209,31 @@ export function usePortalData(userEmail: string | null | undefined) {
     [userEmail, isAccessVerified, isAccessRejected]
   );
 
+  const updateItem = useCallback(
+    async (
+      itemId: string,
+      params: {
+        title: string;
+        dueDate: string;
+        category: PortalCategory;
+        assignee: string;
+      }
+    ) => {
+      if (!isAccessVerified || isAccessRejected) {
+        return;
+      }
+      const displayScope = params.assignee === 'private' ? 'private' : 'shared';
+      await updateDoc(doc(db, ITEMS_COLLECTION, itemId), {
+        title: params.title.trim(),
+        dueDate: params.dueDate,
+        category: params.category,
+        assignee: params.assignee,
+        displayScope,
+      });
+    },
+    [isAccessVerified, isAccessRejected]
+  );
+
   const updateItemStatus = useCallback(
     async (itemId: string, nextStatus: PortalItemStatus) => {
       if (!isAccessVerified || isAccessRejected) {
@@ -234,6 +267,7 @@ export function usePortalData(userEmail: string | null | undefined) {
     errorMessage,
     saveProfile,
     addItem,
+    updateItem,
     updateItemStatus,
     deleteItemPermanently,
   };

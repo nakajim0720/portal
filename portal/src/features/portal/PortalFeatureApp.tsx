@@ -42,6 +42,15 @@ interface PortalFeatureAppProps {
     category: PortalCategory;
     assignee: string;
   }) => Promise<void>;
+  updateItem: (
+    itemId: string,
+    params: {
+      title: string;
+      dueDate: string;
+      category: PortalCategory;
+      assignee: string;
+    }
+  ) => Promise<void>;
   updateItemStatus: (itemId: string, nextStatus: PortalItemStatus) => Promise<void>;
   deleteItemPermanently: (itemId: string) => Promise<void>;
 }
@@ -124,11 +133,12 @@ export function PortalFeatureApp({
   isAccessVerified,
   isAccessRejected,
   addItem,
+  updateItem,
   updateItemStatus,
   deleteItemPermanently,
 }: PortalFeatureAppProps) {
   const [activeTab, setActiveTab] = useState<PortalTabId>('home');
-  const [selectedDetailItem, setSelectedDetailItem] = useState<PortalItem | null>(null);
+  const [selectedDetailItemId, setSelectedDetailItemId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string>('');
 
   // 新規追加フォーム状態
@@ -156,6 +166,10 @@ export function PortalFeatureApp({
       setCategory(qCategory);
     }
   }, []);
+
+  const selectedDetailItem = selectedDetailItemId
+    ? items.find((i) => i.id === selectedDetailItemId) ?? null
+    : null;
 
   // ふたり（user1 / user2）のアカウント一覧を動的に構築
   const memberEntries: Array<{ key: string; email: string; name: string }> = (() => {
@@ -314,7 +328,7 @@ export function PortalFeatureApp({
             )}
             <button
               type="button"
-              onClick={() => setSelectedDetailItem(item)}
+              onClick={() => setSelectedDetailItemId(item.id)}
               className={`text-left font-medium break-words hover:underline ${
                 mode === 'completed' ? 'line-through text-slate-400' : 'text-slate-900'
               }`}
@@ -520,7 +534,12 @@ export function PortalFeatureApp({
         )}
 
         {activeTab === 'calendar' && (
-          <CalendarView items={items} usersMap={usersMap} currentEmail={currentEmail} />
+          <CalendarView
+            items={items}
+            usersMap={usersMap}
+            currentEmail={currentEmail}
+            onUpdateItem={updateItem}
+          />
         )}
 
         {(activeTab === 'shopping' || activeTab === 'dateideas' || activeTab === 'shared') && (
@@ -685,7 +704,9 @@ export function PortalFeatureApp({
       <TaskDetailModal
         item={selectedDetailItem}
         usersMap={usersMap}
-        onClose={() => setSelectedDetailItem(null)}
+        currentEmail={currentEmail}
+        onUpdateItem={updateItem}
+        onClose={() => setSelectedDetailItemId(null)}
       />
     </div>
   );

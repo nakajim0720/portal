@@ -1,24 +1,27 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Cake, Calendar as CalendarIcon, X } from 'lucide-react';
-import type { PortalItem, PortalUserProfile } from '../types';
+import type { PortalCategory, PortalItem, PortalUserProfile } from '../types';
 import {
   formatDateTimeJst,
   getJstBirthdayMonthDay,
   getJstDateKey,
   getTodayJstDateKey,
 } from '../dateJst';
+import { TaskDetailModal } from './TaskDetailModal';
 
 interface CalendarViewProps {
   items: PortalItem[];
   usersMap: Record<string, PortalUserProfile>;
   currentEmail: string;
-}
-
-interface SelectedDayInfo {
-  dateKey: string; // YYYY-MM-DD
-  dayNumber: number;
-  birthdays: PortalUserProfile[];
-  dayItems: PortalItem[];
+  onUpdateItem: (
+    itemId: string,
+    params: {
+      title: string;
+      dueDate: string;
+      category: PortalCategory;
+      assignee: string;
+    }
+  ) => Promise<void>;
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -68,17 +71,6 @@ function calculateAgeJst(birthday: string, referenceDateKey?: string): number | 
   return age >= 0 ? age : null;
 }
 
-function getCategoryLabel(category: PortalItem['category']): string {
-  switch (category) {
-    case 'shopping':
-      return 'お買い物';
-    case 'dateideas':
-      return 'デート・おでかけ';
-    case 'shared':
-      return '共有タスク・家事';
-  }
-}
-
 function getFallbackNameFromEmail(email: string): string {
   const local = email.split('@')[0]?.trim();
   return local || 'メンバー';
@@ -88,11 +80,12 @@ export function CalendarView({
   items,
   usersMap,
   currentEmail,
+  onUpdateItem,
 }: CalendarViewProps) {
   const [monthCursor, setMonthCursor] = useState<Date>(() => new Date());
-  const [selectedDay, setSelectedDay] = useState<SelectedDayInfo | null>(null);
-  const [selectedBirthdayUser, setSelectedBirthdayUser] = useState<PortalUserProfile | null>(null);
-  const [selectedDetailItem, setSelectedDetailItem] = useState<PortalItem | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [selectedBirthdayEmail, setSelectedBirthdayEmail] = useState<string | null>(null);
+  const [selectedDetailItemId, setSelectedDetailItemId] = useState<string | null>(null);
 
   const year = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
@@ -141,26 +134,49 @@ export function CalendarView({
   }
 
   const closeAllModals = () => {
-    setSelectedDay(null);
-    setSelectedBirthdayUser(null);
-    setSelectedDetailItem(null);
+    setSelectedDateKey(null);
+    setSelectedBirthdayEmail(null);
+    setSelectedDetailItemId(null);
   };
 
   const backToDayList = () => {
-    setSelectedBirthdayUser(null);
-    setSelectedDetailItem(null);
+    setSelectedBirthdayEmail(null);
+    setSelectedDetailItemId(null);
   };
 
-  const currentBirthdayProfile = selectedBirthdayUser
-    ? usersMap[selectedBirthdayUser.email] || selectedBirthdayUser
+  const selectedDetailItem = selectedDetailItemId
+    ? items.find((i) => i.id === selectedDetailItemId) ?? null
+    : null;
+
+  const currentBirthdayProfile = selectedBirthdayEmail
+    ? usersMap[selectedBirthdayEmail] ?? null
     : null;
 
   const selectedBirthdayAge = currentBirthdayProfile?.birthday
     ? calculateAgeJst(currentBirthdayProfile.birthday)
     : null;
 
+  const selectedDayBirthdays = selectedDateKey
+    ? Object.values(usersMap).filter((u) => {
+        if (!u.birthday || !u.displayName) {
+          return false;
+        }
+        return getJstBirthdayMonthDay(u.birthday) === selectedDateKey.slice(5);
+      })
+    : [];
+
+  const selectedDayItems = selectedDateKey
+    ? visibleItems.filter((item) => getJstDateKey(item.dueDate) === selectedDateKey)
+    : [];
+
+  const selectedDayLabel = (() => {
+    if (!selectedDateKey) return '';
+    const [y, m, d] = selectedDateKey.split('-');
+    return `${y}年${Number(m)}月${Number(d)}日の予定一覧`;
+  })();
+
   const isDayListOpen = Boolean(
-    selectedDay && !selectedBirthdayUser && !selectedDetailItem
+    selectedDateKey && !currentBirthdayProfile && !selectedDetailItem
   );
 
   return (
@@ -246,26 +262,16 @@ export function CalendarView({
                 role="button"
                 tabIndex={0}
                 onClick={() => {
-                  setSelectedBirthdayUser(null);
-                  setSelectedDetailItem(null);
-                  setSelectedDay({
-                    dateKey: cell.key,
-                    dayNumber: cell.day!,
-                    birthdays: birthdaysHere,
-                    dayItems,
-                  });
+                  setSelectedBirthdayEmail(null);
+                  setSelectedDetailItemId(null);
+                  setSelectedDateKey(cell.key);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setSelectedBirthdayUser(null);
-                    setSelectedDetailItem(null);
-                    setSelectedDay({
-                      dateKey: cell.key,
-                      dayNumber: cell.day!,
-                      birthdays: birthdaysHere,
-                      dayItems,
-                    });
+                    setSelectedBirthdayEmail(null);
+                    setSelectedDetailItemId(null);
+                    setSelectedDateKey(cell.key);
                   }
                 }}
                 className={`min-h-[84px] sm:min-h-[100px] rounded-lg border p-1 text-left flex flex-col gap-1 overflow-hidden cursor-pointer transition ${
@@ -333,14 +339,14 @@ export function CalendarView({
       </section>
 
       {/* 日付選択時の予定・誕生日一覧モーダル */}
-      {isDayListOpen && selectedDay && (
+      {isDayListOpen && selectedDateKey && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full min-w-0 overflow-hidden p-5 shadow-xl space-y-4 my-auto">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 min-w-0">
                 <CalendarIcon className="w-5 h-5 text-pink-600 shrink-0" />
                 <h3 className="text-lg font-bold text-slate-900 truncate">
-                  {year}年{month + 1}月{selectedDay.dayNumber}日の予定一覧
+                  {selectedDayLabel}
                 </h3>
               </div>
               <button
@@ -353,11 +359,11 @@ export function CalendarView({
               </button>
             </div>
 
-            {selectedDay.birthdays.length > 0 && (
+            {selectedDayBirthdays.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-bold text-amber-800">誕生日</p>
                 <ul className="space-y-2">
-                  {selectedDay.birthdays.map((bUser) => {
+                  {selectedDayBirthdays.map((bUser) => {
                     const liveProfile = usersMap[bUser.email] || bUser;
                     const age = calculateAgeJst(liveProfile.birthday);
                     const displayName = resolveUserDisplayName(liveProfile.email);
@@ -365,7 +371,7 @@ export function CalendarView({
                       <li key={liveProfile.email}>
                         <button
                           type="button"
-                          onClick={() => setSelectedBirthdayUser(liveProfile)}
+                          onClick={() => setSelectedBirthdayEmail(liveProfile.email)}
                           className="w-full p-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-left flex items-center justify-between gap-3 transition"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -397,17 +403,17 @@ export function CalendarView({
 
             <div className="space-y-2">
               <p className="text-xs font-bold text-slate-600">
-                予定（{selectedDay.dayItems.length}件）
+                予定（{selectedDayItems.length}件）
               </p>
-              {selectedDay.dayItems.length === 0 ? (
+              {selectedDayItems.length === 0 ? (
                 <p className="text-sm text-slate-500 py-3">
-                  {selectedDay.birthdays.length > 0
+                  {selectedDayBirthdays.length > 0
                     ? 'この日の登録予定はありません。'
                     : 'この日の予定はありません。'}
                 </p>
               ) : (
                 <ul className="space-y-2">
-                  {selectedDay.dayItems.map((item) => {
+                  {selectedDayItems.map((item) => {
                     const formatted = formatDateTimeJst(item.dueDate);
                     const timePart = formatted.length >= 16 ? formatted.slice(11, 16) : '';
                     const assigneeLabel = formatItemAssignee(item);
@@ -415,7 +421,7 @@ export function CalendarView({
                       <li key={item.id}>
                         <button
                           type="button"
-                          onClick={() => setSelectedDetailItem(item)}
+                          onClick={() => setSelectedDetailItemId(item.id)}
                           className="w-full p-3 rounded-xl border border-slate-200 bg-white hover:bg-pink-50/60 text-left flex items-center justify-between gap-3 transition"
                         >
                           <div className="min-w-0 space-y-0.5">
@@ -426,7 +432,7 @@ export function CalendarView({
                             {timePart && (
                               <p className="text-xs text-rose-700 font-medium">{timePart}</p>
                             )}
-                            <p className="text-xs text-pink-700">タップして詳細を表示</p>
+                            <p className="text-xs text-pink-700">タップして詳細・編集</p>
                           </div>
                           <span className="text-xs font-semibold text-pink-700 shrink-0">詳細</span>
                         </button>
@@ -450,81 +456,16 @@ export function CalendarView({
         </div>
       )}
 
-      {/* 予定詳細モーダル */}
-      {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full min-w-0 overflow-hidden p-5 shadow-xl space-y-4 my-auto">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-pink-700">
-                  {getCategoryLabel(selectedDetailItem.category)}
-                </p>
-                <h3 className="text-lg font-bold text-slate-900 break-words">
-                  {selectedDetailItem.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={closeAllModals}
-                aria-label="閉じる"
-                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <dl className="space-y-2.5 text-sm">
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">担当・区分</dt>
-                <dd className="font-semibold text-slate-900 text-right">
-                  {formatItemAssignee(selectedDetailItem)}
-                </dd>
-              </div>
-              {selectedDetailItem.dueDate && (
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">予定日時</dt>
-                  <dd className="font-medium text-rose-700 text-right">
-                    {formatDateTimeJst(selectedDetailItem.dueDate)}
-                  </dd>
-                </div>
-              )}
-              <div className="flex justify-between gap-2">
-                <dt className="text-slate-500">作成者</dt>
-                <dd className="font-medium text-slate-900 text-right">
-                  {resolveUserDisplayName(selectedDetailItem.createdBy)}
-                </dd>
-              </div>
-              {selectedDetailItem.createdAt && (
-                <div className="flex justify-between gap-2">
-                  <dt className="text-slate-500">作成日時</dt>
-                  <dd className="font-medium text-slate-900 text-right">
-                    {formatDateTimeJst(selectedDetailItem.createdAt)}
-                  </dd>
-                </div>
-              )}
-            </dl>
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              {selectedDay && (
-                <button
-                  type="button"
-                  onClick={backToDayList}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-base"
-                >
-                  その日の一覧に戻る
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={closeAllModals}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-semibold text-base"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 予定詳細・編集モーダル（共通コンポーネント利用） */}
+      <TaskDetailModal
+        item={selectedDetailItem}
+        usersMap={usersMap}
+        currentEmail={currentEmail}
+        onUpdateItem={onUpdateItem}
+        onClose={closeAllModals}
+        onBackToList={selectedDateKey ? backToDayList : undefined}
+        backButtonLabel="その日の一覧に戻る"
+      />
 
       {/* 誕生日詳細モーダル */}
       {currentBirthdayProfile && (
@@ -586,7 +527,7 @@ export function CalendarView({
             </dl>
 
             <div className="flex flex-wrap gap-2 pt-2">
-              {selectedDay && (
+              {selectedDateKey && (
                 <button
                   type="button"
                   onClick={backToDayList}
