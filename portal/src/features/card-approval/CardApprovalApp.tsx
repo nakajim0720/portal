@@ -73,7 +73,7 @@ export function CardApprovalApp({
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <main className="flex-1 max-w-5xl w-full min-w-0 mx-auto px-4 py-5 pb-28 space-y-4">
+      <main className="flex-1 max-w-5xl w-full min-w-0 mx-auto px-4 py-5 pb-[calc(8rem+env(safe-area-inset-bottom))] space-y-4">
         {error && (
           <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-700 font-medium">
             {error}
@@ -161,7 +161,7 @@ export function CardApprovalApp({
           setIsFormOpen(true);
         }}
         aria-label="新規購入登録"
-        className="fixed right-4 bottom-20 z-30 inline-flex items-center gap-1.5 px-4 py-3 rounded-full bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm shadow-lg"
+        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-30 inline-flex items-center gap-1.5 px-4 py-3 rounded-full bg-pink-600 hover:bg-pink-700 text-white font-bold text-sm shadow-lg"
       >
         <Plus className="w-5 h-5" />
         <span>登録</span>

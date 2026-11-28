@@ -464,12 +464,20 @@ export function PortalFeatureApp({
                   required
                   className="lg:col-span-2 block box-border w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
-                <div className="w-full min-w-0 max-w-full overflow-hidden rounded-xl">
+                <div className="relative w-full min-w-0 max-w-full h-[46px] rounded-xl border border-slate-300 bg-white flex items-center overflow-hidden focus-within:ring-2 focus-within:ring-pink-500">
+                  {!dueDate && (
+                    <span className="pointer-events-none absolute left-3 text-base text-slate-400">
+                      予定日時（任意）
+                    </span>
+                  )}
                   <input
                     type="datetime-local"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="block box-border w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    aria-label="予定日時（任意）"
+                    className={`appearance-none block box-border w-full min-w-0 max-w-full h-full px-3 bg-transparent border-0 text-base text-left focus:outline-none ${
+                      dueDate ? 'text-slate-900' : 'text-transparent'
+                    }`}
                   />
                 </div>
                 <select

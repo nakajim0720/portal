@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
-import { X } from 'lucide-react';
+import { Calendar, X } from 'lucide-react';
 import type { PortalUserProfile } from '../types';
 import { compressImageToBase64 } from '../imageUtils';
 
@@ -10,6 +10,11 @@ interface ProfileModalProps {
   profile: PortalUserProfile | undefined;
   onClose: () => void;
   onSave: (params: { displayName: string; icon: string; birthday: string }) => Promise<void>;
+}
+
+function formatBirthdayDisplay(raw: string): string {
+  if (!raw) return '';
+  return raw.replace(/-/g, '/');
 }
 
 export function ProfileModal({
@@ -141,12 +146,21 @@ export function ProfileModal({
             <label className="block text-sm font-medium text-slate-700 mb-1">
               誕生日（毎年カレンダーに表示）
             </label>
-            <div className="w-full max-w-full overflow-hidden rounded-xl">
+            <div className="relative w-full min-w-0 max-w-full h-[46px] px-3 rounded-xl border border-slate-300 bg-white flex items-center justify-between gap-2 overflow-hidden focus-within:ring-2 focus-within:ring-pink-500">
+              <span
+                className={`text-base truncate ${
+                  birthday ? 'text-slate-900' : 'text-slate-400'
+                }`}
+              >
+                {birthday ? formatBirthdayDisplay(birthday) : '生年月日を選択（任意）'}
+              </span>
+              <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
               <input
                 type="date"
                 value={birthday}
                 onChange={(e) => setBirthday(e.target.value)}
-                className="block box-border w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-pink-500"
+                aria-label="誕生日"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
           </div>
