@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { signOut, type User } from 'firebase/auth';
+import { type User } from 'firebase/auth';
 import {
   collection,
   onSnapshot,
@@ -27,7 +27,6 @@ import {
   Edit3,
   Check,
   Download,
-  LogOut,
   ChevronRight,
   Calculator,
   History,
@@ -37,12 +36,12 @@ import {
   Copy,
   ExternalLink,
 } from 'lucide-react';
-import { auth, db } from '../../firebase';
+import { db } from '../../firebase';
 import { sendLineNotification } from '../../shared/utils/lineNotify';
+import { getNowJstIso } from '../portal/dateJst';
 import {
   type Store,
   type PriceRecord,
-  type ShoppingItem,
   type UnitType,
   UNIT_OPTIONS,
   getTodayJST,
@@ -53,6 +52,16 @@ import { BarcodeScanner } from './components/BarcodeScanner';
 
 type TabType = 'compare' | 'register' | 'list' | 'stores';
 
+interface SyncedShoppingItem {
+  id: string;
+  title: string;
+  productName: string;
+  janCode: string;
+  memo: string;
+  completed: boolean;
+  createdAt: string;
+}
+
 interface KaimonoCompareAppProps {
   user: User;
   displayName?: string;
@@ -61,6 +70,7 @@ interface KaimonoCompareAppProps {
 
 const PORTAL_URL = 'https://nakajim0720.github.io/portal/';
 const MIGRATION_DONE_KEY = 'kaimono_migrated_to_price_prefix_v1';
+const SHOPPING_PORTAL_MIGRATION_KEY = 'kaimono_shopping_migrated_to_portal_v1';
 
 const normalizeCode = (raw: string): string => raw.trim().toUpperCase();
 
@@ -93,7 +103,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
 
   const [stores, setStores] = useState<Store[]>([]);
   const [records, setRecords] = useState<PriceRecord[]>([]);
-  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
+  const [shoppingList, setShoppingList] = useState<SyncedShoppingItem[]>([]);
   const [migrationMessage, setMigrationMessage] = useState<string>('');
 
   // 価格登録フォームステート
@@ -149,76 +159,112 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     }
   }, []);
 
-  // 旧コレクション（stores, priceRecords, shoppingList）から price_* コレクションへの自動移行
+  // 旧コレクション（stores, priceRecords）の移行 + 旧買い物リスト（price_shopping_list）の portal_items 統合移行
   useEffect(() => {
     let cancelled = false;
 
     const migrateLegacyData = async () => {
-      if (localStorage.getItem(MIGRATION_DONE_KEY) === 'true') return;
-
       try {
-        const [oldStoresSnap, newStoresSnap] = await Promise.all([
-          getDocs(collection(db, 'stores')),
-          getDocs(collection(db, 'price_stores')),
-        ]);
-        const [oldRecordsSnap, newRecordsSnap] = await Promise.all([
-          getDocs(collection(db, 'priceRecords')),
-          getDocs(collection(db, 'price_records')),
-        ]);
-        const [oldListSnap, newListSnap] = await Promise.all([
-          getDocs(collection(db, 'shoppingList')),
-          getDocs(collection(db, 'price_shopping_list')),
-        ]);
-
         let migratedCount = 0;
-        const storeIdMapping = new Map<string, string>();
 
-        if (newStoresSnap.empty && !oldStoresSnap.empty) {
-          for (const d of oldStoresSnap.docs) {
-            const data = d.data();
-            const newDocRef = doc(collection(db, 'price_stores'));
-            await setDoc(newDocRef, data);
-            storeIdMapping.set(d.id, newDocRef.id);
-            migratedCount += 1;
-          }
-        } else {
-          for (const d of newStoresSnap.docs) {
-            storeIdMapping.set(d.id, d.id);
-          }
-          for (const d of oldStoresSnap.docs) {
-            const oldName = String(d.data().name ?? '');
-            const matchedNew = newStoresSnap.docs.find(
-              (nd) => String(nd.data().name ?? '') === oldName
-            );
-            if (matchedNew) {
-              storeIdMapping.set(d.id, matchedNew.id);
+        if (localStorage.getItem(MIGRATION_DONE_KEY) !== 'true') {
+          const [oldStoresSnap, newStoresSnap] = await Promise.all([
+            getDocs(collection(db, 'stores')),
+            getDocs(collection(db, 'price_stores')),
+          ]);
+          const [oldRecordsSnap, newRecordsSnap] = await Promise.all([
+            getDocs(collection(db, 'priceRecords')),
+            getDocs(collection(db, 'price_records')),
+          ]);
+
+          const storeIdMapping = new Map<string, string>();
+
+          if (newStoresSnap.empty && !oldStoresSnap.empty) {
+            for (const d of oldStoresSnap.docs) {
+              const data = d.data();
+              const newDocRef = doc(collection(db, 'price_stores'));
+              await setDoc(newDocRef, data);
+              storeIdMapping.set(d.id, newDocRef.id);
+              migratedCount += 1;
+            }
+          } else {
+            for (const d of newStoresSnap.docs) {
+              storeIdMapping.set(d.id, d.id);
+            }
+            for (const d of oldStoresSnap.docs) {
+              const oldName = String(d.data().name ?? '');
+              const matchedNew = newStoresSnap.docs.find(
+                (nd) => String(nd.data().name ?? '') === oldName
+              );
+              if (matchedNew) {
+                storeIdMapping.set(d.id, matchedNew.id);
+              }
             }
           }
+
+          if (newRecordsSnap.empty && !oldRecordsSnap.empty) {
+            for (const d of oldRecordsSnap.docs) {
+              const raw = d.data();
+              const mappedStoreId =
+                storeIdMapping.get(String(raw.storeId ?? '')) ?? String(raw.storeId ?? '');
+              await setDoc(doc(collection(db, 'price_records')), {
+                ...raw,
+                storeId: mappedStoreId,
+              });
+              migratedCount += 1;
+            }
+          }
+
+          localStorage.setItem(MIGRATION_DONE_KEY, 'true');
         }
 
-        if (newRecordsSnap.empty && !oldRecordsSnap.empty) {
-          for (const d of oldRecordsSnap.docs) {
+        // 旧 price_shopping_list -> portal_items (category: 'shopping') への統合移行（未完了アイテム）
+        if (localStorage.getItem(SHOPPING_PORTAL_MIGRATION_KEY) !== 'true') {
+          const oldListSnap = await getDocs(collection(db, 'price_shopping_list'));
+          const portalSnap = await getDocs(collection(db, 'portal_items'));
+          const existingTitles = new Set<string>();
+          portalSnap.forEach((d) => {
             const raw = d.data();
-            const mappedStoreId =
-              storeIdMapping.get(String(raw.storeId ?? '')) ?? String(raw.storeId ?? '');
-            await setDoc(doc(collection(db, 'price_records')), {
-              ...raw,
-              storeId: mappedStoreId,
-            });
-            migratedCount += 1;
-          }
-        }
+            if (raw.category === 'shopping' && raw.status !== 2) {
+              existingTitles.add(String(raw.title ?? '').trim());
+            }
+          });
 
-        if (newListSnap.empty && !oldListSnap.empty) {
           for (const d of oldListSnap.docs) {
-            await setDoc(doc(collection(db, 'price_shopping_list')), d.data());
+            const raw = d.data();
+            const pName = String(raw.productName ?? '').trim();
+            const pMemo = String(raw.memo ?? '').trim();
+            const isCompleted = Boolean(raw.completed);
+            if (!pName || isCompleted) continue;
+
+            const displayTitle = pMemo ? `${pName}（${pMemo}）` : pName;
+            if (existingTitles.has(displayTitle) || existingTitles.has(pName)) {
+              continue;
+            }
+
+            await addDoc(collection(db, 'portal_items'), {
+              title: displayTitle,
+              productName: pName,
+              janCode: String(raw.janCode ?? ''),
+              memo: pMemo,
+              category: 'shopping',
+              assignee: 'shared',
+              displayScope: 'shared',
+              dueDate: '',
+              status: 0,
+              createdBy: user.email || '',
+              createdAt: getNowJstIso(),
+              trashedAt: null,
+            });
+            existingTitles.add(displayTitle);
             migratedCount += 1;
           }
+
+          localStorage.setItem(SHOPPING_PORTAL_MIGRATION_KEY, 'true');
         }
 
-        localStorage.setItem(MIGRATION_DONE_KEY, 'true');
         if (!cancelled && migratedCount > 0) {
-          setMigrationMessage(`旧データ ${migratedCount} 件を price_* コレクションへ移行しました`);
+          setMigrationMessage(`既存データ ${migratedCount} 件を統合・移行しました`);
           setTimeout(() => setMigrationMessage(''), 5000);
         }
       } catch (err) {
@@ -235,9 +281,9 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [onUnauthorized]);
+  }, [onUnauthorized, user.email]);
 
-  // price_* コレクションのリアルタイム購読
+  // price_stores, price_records, および portal_items（お買い物）のリアルタイム購読
   useEffect(() => {
     const handleSnapshotError = (error: FirestoreError) => {
       if (error.code === 'permission-denied') {
@@ -273,15 +319,39 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
       handleSnapshotError
     );
 
-    const qList = query(collection(db, 'price_shopping_list'), orderBy('createdAt', 'desc'));
-    const unsubList = onSnapshot(
-      qList,
+    const unsubPortalShopping = onSnapshot(
+      collection(db, 'portal_items'),
       (snapshot) => {
-        const data: ShoppingItem[] = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<ShoppingItem, 'id'>),
-        }));
-        setShoppingList(data);
+        const list: SyncedShoppingItem[] = [];
+        snapshot.forEach((docSnap) => {
+          const raw = docSnap.data();
+          if (raw.category !== 'shopping') return;
+          if (raw.status === 2) return; // ゴミ箱は非表示
+          if (raw.displayScope === 'private' && raw.createdBy && raw.createdBy !== user.email) {
+            return;
+          }
+          const rawTitle = String(raw.title ?? '').trim();
+          const rawProductName = String(raw.productName ?? '').trim() || rawTitle;
+          list.push({
+            id: docSnap.id,
+            title: rawTitle,
+            productName: rawProductName,
+            janCode: String(raw.janCode ?? ''),
+            memo: String(raw.memo ?? ''),
+            completed: raw.status === 1,
+            createdAt: String(raw.createdAt ?? ''),
+          });
+        });
+
+        // 未完了を上、完了を下にし、それぞれ作成日時の新しい順
+        list.sort((a, b) => {
+          if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1;
+          }
+          return (b.createdAt || '').localeCompare(a.createdAt || '');
+        });
+
+        setShoppingList(list);
       },
       handleSnapshotError
     );
@@ -289,9 +359,9 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     return () => {
       unsubStores();
       unsubRecords();
-      unsubList();
+      unsubPortalShopping();
     };
-  }, [onUnauthorized]);
+  }, [onUnauthorized, user.email]);
 
   const handleCopyText = async (text: string, key: string) => {
     if (!text) return;
@@ -502,17 +572,27 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     );
   }, [records, searchQuery]);
 
+  // ポータルの「お買い物（portal_items / category: shopping）」へ直接追加
   const addShoppingItem = async (name: string, jan = '', itemMemo = '') => {
     const trimmedName = name.trim();
     const trimmedMemo = itemMemo.trim();
     if (!trimmedName) return;
 
-    await addDoc(collection(db, 'price_shopping_list'), {
+    const displayTitle = trimmedMemo ? `${trimmedName}（${trimmedMemo}）` : trimmedName;
+
+    await addDoc(collection(db, 'portal_items'), {
+      title: displayTitle,
       productName: trimmedName,
       janCode: jan,
       memo: trimmedMemo,
-      completed: false,
-      createdAt: Date.now(),
+      category: 'shopping',
+      assignee: 'shared',
+      displayScope: 'shared',
+      dueDate: '',
+      status: 0,
+      createdBy: user.email || '',
+      createdAt: getNowJstIso(),
+      trashedAt: null,
     });
 
     // LINE通知（C-1: 共有買い物リスト追加は任意）
@@ -526,14 +606,20 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
     });
   };
 
-  const toggleShoppingItem = async (item: ShoppingItem) => {
-    await updateDoc(doc(db, 'price_shopping_list', item.id), {
-      completed: !item.completed,
+  // ポータルの status (0: 未完了 / 1: 完了) と双方向同期
+  const toggleShoppingItem = async (item: SyncedShoppingItem) => {
+    await updateDoc(doc(db, 'portal_items', item.id), {
+      status: item.completed ? 0 : 1,
+      trashedAt: null,
     });
   };
 
+  // ポータルのゴミ箱 (status: 2) へ移動
   const deleteShoppingItem = async (id: string) => {
-    await deleteDoc(doc(db, 'price_shopping_list', id));
+    await updateDoc(doc(db, 'portal_items', id), {
+      status: 2,
+      trashedAt: getNowJstIso(),
+    });
   };
 
   const handleSaveStore = async (e: React.FormEvent) => {
@@ -666,7 +752,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
                     key={group.key}
                     className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
                   >
-                    {/* 商品ヘッダー（1段目: 商品名・コード・コピー・リンク、2段目: アクションボタン） */}
                     <div className="p-4 bg-slate-50/70 border-b border-slate-100 space-y-3">
                       <div className="w-full space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
@@ -1185,7 +1270,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           </form>
         )}
 
-        {/* ==================== 3. 買い物リストタブ ==================== */}
+        {/* ==================== 3. 買い物リストタブ（ポータル「お買い物」と双方向同期） ==================== */}
         {activeTab === 'list' && (
           <div className="space-y-4">
             <form
@@ -1197,9 +1282,14 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
               }}
               className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3"
             >
-              <h2 className="text-base font-bold text-slate-700">
-                買うものを追加（リアルタイム同期）
-              </h2>
+              <div>
+                <h2 className="text-base font-bold text-slate-700">
+                  買うものを追加（ポータルと双方向同期）
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  ポータルの「お買い物」タブとリアルタイムに同期されます。
+                </p>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <input
                   type="text"
@@ -1280,7 +1370,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
                       type="button"
                       onClick={() => deleteShoppingItem(item.id)}
                       className="p-2 text-slate-400 hover:text-rose-600 shrink-0"
-                      aria-label="削除"
+                      aria-label="ゴミ箱へ移動"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1291,7 +1381,7 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
           </div>
         )}
 
-        {/* ==================== 4. 店舗マスタ管理・設定タブ ==================== */}
+        {/* ==================== 4. 店舗マスタ管理タブ ==================== */}
         {activeTab === 'stores' && (
           <div className="space-y-4">
             <form
@@ -1423,21 +1513,6 @@ export const KaimonoCompareApp: React.FC<KaimonoCompareAppProps> = ({
                   {s.memo && <p className="text-base text-slate-600 break-words">{s.memo}</p>}
                 </div>
               ))}
-            </div>
-
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-base min-w-0">
-                <p className="text-slate-500">ログイン中</p>
-                <p className="font-bold text-slate-800 break-all">{user.email}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => signOut(auth)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-base font-bold flex items-center gap-1.5 shrink-0"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>ログアウト</span>
-              </button>
             </div>
           </div>
         )}
